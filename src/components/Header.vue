@@ -1,96 +1,159 @@
 <script setup lang="ts">
-import {router} from '../router'
-import {parseRole} from "../utils"
-import {User, SwitchButton} from "@element-plus/icons-vue"   //图标
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+import { Search, User, SwitchButton } from "@element-plus/icons-vue";
+import { ElMessageBox } from "element-plus";
 
-const role = sessionStorage.getItem('role')    //登录的时候插入的
+const router = useRouter();
+const activeIndex = ref(router.currentRoute.value.path); // 监听当前路径
+const searchQuery = ref("");
 
-//退出登录
+// 退出登录
 function logout() {
-  ElMessageBox.confirm(
-      '是否要退出登录？',
-      '提示',
-      {
-        customClass: "customDialog",
-        confirmButtonText: '是',
-        cancelButtonText: '否',
-        type: "warning",
-        showClose: false,
-        roundButton: true,
-        center: true
-      }
-  ).then(() => {
-    sessionStorage.setItem('token', '')
-    router.push({path: "/login"})
-  })
+  ElMessageBox.confirm("是否要退出登录？", "提示", {
+    customClass: "customDialog",
+    confirmButtonText: "是",
+    cancelButtonText: "否",
+    type: "warning",
+    showClose: false,
+    roundButton: true,
+    center: true,
+  }).then(() => {
+    sessionStorage.setItem("token", "");
+    router.push({ path: "/login" });
+  });
+}
+
+// 切换菜单项
+const handleSelect = (key: string) => {
+  activeIndex.value = key;
+  console.log(activeIndex.value);
+  console.log(key)
+  router.push(key);
+};
+
+// 处理搜索
+const handleSearch = () => {
+  console.log("搜索内容：", searchQuery.value);
 }
 </script>
 
-
 <template>
-  <el-header class="custom-header" height="20">
-    <el-row :gutter="10">
-
+  <el-header class="custom-header" height="70px">
+    <el-row :gutter="10" align="middle">
+      <!-- 左侧标题 -->
       <el-col :span="3" class="header-icon">
-        <router-link to="/dashboard" v-slot="{navigate}" class="no-link">
-          <h1 @click="navigate" class="header-text"> 蓝鲸在线购物</h1>
+        <router-link to="/dashboard" class="no-link">
+          <h1 class="header-text">AI面试助手</h1>
         </router-link>
       </el-col>
-
-      <el-col :span="2">
-        <el-tag class="role-tag" size="large">{{ parseRole(role) }}版</el-tag>
+      <el-col :span="2"></el-col>
+      <!-- 菜单栏 -->
+      <el-col :span="6">
+        <el-menu
+            mode="horizontal"
+            :default-active="activeIndex"
+            @select="handleSelect"
+            background-color="#409eff"
+            text-color="white"
+            class="header-menu"
+            active-text-color="yellow"
+        >
+          <el-menu-item
+              index="/dashboard"
+              :class="{ 'active-menu-item': activeIndex === '/dashboard' }"
+              style="margin-right: 15px; font-size: large"
+          >
+            首页
+          </el-menu-item>
+          <el-menu-item
+              index="/study"
+              :class="{ 'active-menu-item': activeIndex === '/study' }"
+              style="margin-right: 15px; font-size: large"
+          >
+            面试准备
+          </el-menu-item>
+          <el-menu-item
+              index="/exam"
+              :class="{ 'active-menu-item': activeIndex === '/exam' }"
+              style="margin-right: 15px; font-size: large"
+          >
+            模拟面试
+          </el-menu-item>
+          <el-menu-item
+              index="/chat"
+              :class="{ 'active-menu-item': activeIndex === '/chat' }"
+              style="margin-right: 15px; font-size: large"
+          >
+            AI问答
+          </el-menu-item>
+        </el-menu>
       </el-col>
-
-      <el-col :span="16">
+      <el-col :span="4"></el-col>
+      <el-col :span="4">
+        <el-input
+            v-model="searchQuery"
+            placeholder="输入搜索内容..."
+            class="search-input"
+            clearable
+        >
+          <template #append>
+            <el-button @click="handleSearch">
+              <el-icon><Search /></el-icon>
+            </el-button>
+          </template>
+        </el-input>
       </el-col>
-
+      <el-col :span="2"></el-col>
+      <!-- 右侧图标 -->
       <el-col :span="1" class="header-icon">
-        <router-link to="/dashboard" v-slot="{navigate}">
-          <el-icon @click="navigate" :size="35" color="white" ><User /></el-icon>
+        <router-link to="/dashboard">
+          <el-icon :size="35" color="white"><User /></el-icon>
         </router-link>
       </el-col>
 
       <el-col :span="1" class="header-icon">
         <a @click="logout">
-          <el-icon :size="35" color="white" ><SwitchButton /></el-icon>
+          <el-icon :size="35" color="white"><SwitchButton /></el-icon>
         </a>
       </el-col>
     </el-row>
   </el-header>
 </template>
 
-
 <style scoped>
 .custom-header {
   background-color: #409eff;
   border-bottom-left-radius: 20px;
   border-bottom-right-radius: 20px;
-
-  display: flex;
-  flex-direction: column;
 }
 
 .no-link {
   text-decoration: none;
 }
 
-.role-tag {
-  margin-top: 20px;
-  font-size: 20px;
-}
-
 .header-text {
-  color:white;
+  color: white;
   font-size: x-large;
-  min-width: max-content;
-  margin-top: 15px;
-  margin-bottom: 15px;
+  margin: 15px 0;
 }
 
-.header-icon {
-  display: flex;
-  flex-direction: column;
-  align-items:center;
-  justify-content: center;
+/* 选中状态的菜单项文字加粗 */
+.active-menu-item {
+  font-weight: bold;
+}
+
+.header-menu {
+  font-size: large;
+}
+
+/* 添加菜单项间距 */
+.el-menu-item {
+  margin-right: 15px;
+}
+
+/* 搜索框样式 */
+.search-input {
+  width: 100%;
 }
 </style>

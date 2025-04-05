@@ -24,6 +24,24 @@ const router = createRouter({
                 component: () => import('../views/user/Dashboard.vue'),
                 meta: {title: '个人信息'}
             },
+            {
+                path: '/exam',
+                name: 'Exam',
+                component: () => import('../views/Exam/Exam.vue'),
+                meta: {title: '模拟面试'}
+            },
+            {
+                path: '/study',
+                name: 'Study',
+                component: () => import('../views/Study/Study.vue'),
+                meta: {title: '面试准备'}
+            },
+            {
+                path: '/chat',
+                name: 'Chat',
+                component: () => import('../views/AIChat/Chat.vue'),
+                meta: {title: 'AI问答'}
+            }
         ]
     }, {
         path: '/404',
