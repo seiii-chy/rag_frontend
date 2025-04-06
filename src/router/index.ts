@@ -15,7 +15,7 @@ const router = createRouter({
         meta: {title: '用户注册'}
     }, {
         path: '/home',
-        redirect: '/dashboard',
+        redirect: '/homepage',
         component: () => import('../views/Home.vue'),
         children: [
             {
@@ -23,6 +23,12 @@ const router = createRouter({
                 name: 'Dashboard',
                 component: () => import('../views/user/Dashboard.vue'),
                 meta: {title: '个人信息'}
+            },
+            {
+                path: '/homepage',
+                name: 'HomePage',
+                component: () => import('../views/HomePage/HomePage.vue'),
+                meta: {title: '首页'}
             },
             {
                 path: '/exam',

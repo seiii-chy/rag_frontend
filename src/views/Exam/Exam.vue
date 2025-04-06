@@ -84,7 +84,6 @@ const sendMessage = async () => {
         </div>
 
         <div class="reply-panel">
-          <el-button type="text" class="reference-button">参考答案</el-button>
           <div class="reply-list">
             <p class="reply-title">常用</p>
             <p class="reply-item">1. 抱歉，我不太清楚</p>

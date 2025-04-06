@@ -60,8 +60,8 @@ const handleSearch = () => {
             active-text-color="yellow"
         >
           <el-menu-item
-              index="/dashboard"
-              :class="{ 'active-menu-item': activeIndex === '/dashboard' }"
+              index="/homepage"
+              :class="{ 'active-menu-item': activeIndex === '/homepage' }"
               style="margin-right: 15px; font-size: large"
           >
             首页
