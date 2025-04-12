@@ -1,200 +1,215 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { searchWithAI } from '../../api/search'
 
-const router = useRouter()
+const models = ['GPT-4', 'Claude 3', 'Gemini Pro', '自定义模型']
+const selectedModel = ref(models[0])
 
-const courses = ref([
-  { title: 'LeetCode 热题 100', desc: '精选最受欢迎的100题', color: '#7e5bef', id: 1 },
-  { title: '面试经典 150 题', desc: '覆盖所有知识点', color: '#00b894', id: 2 },
-  { title: '动态规划（基础版）', desc: '让入门更简单', color: '#00cec9', id: 3 },
-])
+const searchInput = ref('')
+const messages = ref([])
+const history = ref([])
+const activeHistory = ref(null)
+const references = ref([])
 
-const categories = ['推荐', '算法', '数据库', '题目交流', '职业发展', '竞赛', '前端', '后端']
+const handleSearch = async () => {
+  if (!searchInput.value.trim()) return
+  const query = searchInput.value.trim()
 
-const posts = ref([
-  {
-    id: 101,
-    title: '13天突破 C 语言',
-    content: '打破传统学习方式，带你快速入门 C 语言',
-    image: 'https://fakeimg.pl/120x80/?text=C',
-    author: 'LeetCode',
-  },
-  {
-    id: 102,
-    title: '2000积分的会员，速通学习计划！',
-    content: '这个会员太香了！',
-    author: 'calmyself',
-  },
-  {
-    id: 103,
-    title: '校招内推｜暑期实习内推',
-    content: '涵盖投递方式、岗位分类和薪资待遇汇总',
-    author: 'Nice VolhardoHQ',
-  },
-])
+  // 添加历史记录
+  history.value.unshift({ query })
+  activeHistory.value = 0
 
-const goToCourse = (id) => {
-  router.push(`/course/${id}`)
+  // 用户消息显示
+  messages.value.push({ type: 'user', content: query })
+
+  try {
+    const res = await searchWithAI({
+      query,
+      top_k: 5,
+      model: selectedModel.value,
+    })
+
+    messages.value.push({ type: 'ai', content: res.answer })
+
+    references.value = res.retrieved_docs.map(doc => ({
+      title: doc.question,
+      source: `匹配度: ${doc.score.toFixed(2)}`,
+    }))
+  } catch (err) {
+    messages.value.push({
+      type: 'ai',
+      content: '抱歉，AI 搜索失败，请稍后再试。',
+    })
+    console.error(err)
+  }
+
+  searchInput.value = ''
 }
 
-const goToPost = (id) => {
-  router.push(`/post/${id}`)
+const changeModel = (val) => {
+  console.log('当前选择模型:', val)
+}
+
+const selectHistory = (index) => {
+  activeHistory.value = index
+  searchInput.value = history.value[index].query
+  handleSearch()
 }
 </script>
 
 <template>
-  <div class="home-page">
-    <section class="course-section">
-      <h2 class="section-title">学习计划</h2>
-      <div class="course-list">
-        <el-card
-            v-for="course in courses"
-            :key="course.id"
-            class="course-card"
-            :style="{ backgroundColor: course.color }"
-            shadow="hover"
-            @click="goToCourse(course.id)"
+  <el-container class="ai-search-container">
+    <!-- 左侧：搜索历史 -->
+    <el-aside width="15%" class="history-panel">
+      <!-- 顶部工具栏：模型选择 -->
+      <el-header class="toolbar">
+        <el-select v-model="selectedModel" placeholder="选择模型" @change="changeModel">
+          <el-option
+              v-for="model in models"
+              :key="model"
+              :label="model"
+              :value="model"
+          />
+        </el-select>
+      </el-header>
+      <h3>搜索历史</h3>
+      <el-menu :default-active="activeHistory" class="history-menu">
+        <el-menu-item
+            v-for="(item, index) in history"
+            :key="index"
+            @click="selectHistory(index)"
         >
-          <h3 class="card-title">{{ course.title }}</h3>
-          <p class="card-desc">{{ course.desc }}</p>
-        </el-card>
-      </div>
-    </section>
+          {{ item.query }}
+        </el-menu-item>
+      </el-menu>
+    </el-aside>
 
-    <div class="category-nav">
-      <el-button
-          v-for="cat in categories"
-          :key="cat"
-          type="text"
-          class="category-btn"
-      >{{ cat }}</el-button>
-    </div>
-
-    <section class="post-section">
-      <h2 class="section-title">推荐帖子</h2>
-      <div class="post-list">
-        <el-card
-            v-for="post in posts"
-            :key="post.id"
-            class="post-card"
-            shadow="hover"
-            @click="goToPost(post.id)"
-        >
-          <div class="post-content">
-            <div class="post-text">
-              <h3>{{ post.title }}</h3>
-              <p class="author">by {{ post.author }}</p>
-              <p>{{ post.content }}</p>
-            </div>
-            <img v-if="post.image" :src="post.image" alt="preview" class="post-image" />
+    <!-- 中间：AI 聊天窗口 -->
+    <el-container>
+      <!-- 聊天内容区 -->
+      <el-main class="chat-main">
+        <div class="chat-box" ref="chatBox">
+          <div
+              v-for="(msg, index) in messages"
+              :key="index"
+              :class="['message', msg.type]"
+          >
+            <div class="message-content">{{ msg.content }}</div>
           </div>
-        </el-card>
-      </div>
-    </section>
-  </div>
+        </div>
+
+        <!-- 输入框 -->
+        <div class="chat-input-bar">
+          <el-input
+              v-model="searchInput"
+              placeholder="输入你的问题或关键词..."
+              type="textarea"
+              :rows="3"
+              @keyup.enter.native="handleSearch"
+          />
+          <el-button type="primary" @click="handleSearch">
+            搜索
+          </el-button>
+        </div>
+      </el-main>
+    </el-container>
+
+    <!-- 右侧：文献展示 -->
+    <el-aside width="20%" class="reference-panel">
+      <h3>参考文献</h3>
+      <el-card
+          v-for="(ref, index) in references"
+          :key="index"
+          class="reference-card"
+          shadow="hover"
+      >
+        <p><strong>{{ ref.title }}</strong></p>
+        <p class="ref-meta">{{ ref.source }}</p>
+      </el-card>
+    </el-aside>
+  </el-container>
 </template>
 
 <style scoped>
-.home-page {
-  padding: 20px;
-  color: #fff;
-  min-height: 100vh;
+.ai-search-container {
+  height: 92vh;
 }
 
-.section-title {
-  font-size: 20px;
-  margin-bottom: 12px;
-  font-weight: bold;
-}
-
-.course-section {
-  margin-bottom: 30px;
-}
-
-.course-list {
+.toolbar {
+  background-color: #f4f4f5;
+  padding: 10px;
   display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
 }
 
-.course-card {
-  width: 240px;
-  color: white;
-  cursor: pointer;
-  border-radius: 12px;
-}
-
-.card-title {
-  font-size: 16px;
-  margin-bottom: 5px;
-}
-
-.card-desc {
-  font-size: 13px;
-  opacity: 0.9;
-}
-
-.category-nav {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 30px;
-  padding: 10px 0;
-  border-bottom: 1px solid #444;
-}
-
-.category-btn {
-  color: #ccc;
-}
-
-.category-btn:hover {
-  color: #fff;
-  text-decoration: underline;
-}
-
-.post-section {
-  margin-bottom: 60px;
-}
-
-.post-list {
+.chat-main {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-}
-
-.post-card {
-  background: #a8e9ff;
-  cursor: pointer;
-  border-radius: 12px;
-  padding: 15px;
-  transition: all 0.3s;
-}
-
-.post-card:hover {
-  background: #aaaaaa;
-}
-
-.post-content {
-  display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  background: #fdfdfd;
+  padding: 20px;
+  height: 100%;
 }
 
-.post-text {
-  max-width: 70%;
+.chat-box {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.author {
-  font-size: 12px;
-  color: #aaa;
-  margin-bottom: 5px;
-}
-
-.post-image {
-  width: 120px;
-  height: 80px;
-  object-fit: cover;
+.message {
+  max-width: 80%;
+  padding: 10px;
   border-radius: 8px;
+  font-size: 14px;
+}
+
+.message.user {
+  align-self: flex-end;
+  background: #4caf50;
+  color: white;
+}
+
+.message.ai {
+  align-self: flex-start;
+  background: #e1e1e1;
+  color: black;
+}
+
+.chat-input-bar {
+  display: flex;
+  gap: 10px;
+}
+
+.history-panel {
+  background: #fafafa;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.history-menu {
+  border: none;
+  background: none;
+}
+
+.reference-panel {
+  background: #fafafa;
+  padding: 10px;
+  border-left: 1px solid #ddd;
+  overflow-y: auto;
+}
+
+.reference-card {
+  margin-bottom: 10px;
+}
+
+.ref-meta {
+  font-size: 12px;
+  color: #666;
 }
 </style>
+

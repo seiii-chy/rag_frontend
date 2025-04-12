@@ -26,12 +26,14 @@ const goToCourse = (id) => {
 
 <template>
   <div class="interview-prep-page">
+    <!-- 筛选按钮 -->
     <div class="filter-toggle">
       <el-button @click="toggleFilter" type="primary" plain>
         {{ isFilterVisible ? '收起筛选' : '展开筛选' }}
       </el-button>
     </div>
 
+    <!-- 筛选面板 -->
     <el-collapse-transition>
       <div v-show="isFilterVisible" class="filter-panel">
         <el-form inline>
@@ -54,6 +56,13 @@ const goToCourse = (id) => {
       </div>
     </el-collapse-transition>
 
+    <!-- 模块标题 -->
+    <div class="section-title">
+      <h2>按模块学习</h2>
+      <el-divider />
+    </div>
+
+    <!-- 卡片区域 -->
     <div class="card-grid">
       <el-card
           v-for="item in knowledgePoints"
@@ -62,7 +71,9 @@ const goToCourse = (id) => {
           shadow="hover"
           @click="goToCourse(item.id)"
       >
-        <h3>{{ item.title }}</h3>
+        <template #header>
+          <h3>{{ item.title }}</h3>
+        </template>
         <p>{{ item.desc }}</p>
       </el-card>
     </div>
@@ -72,6 +83,7 @@ const goToCourse = (id) => {
 <style scoped>
 .interview-prep-page {
   padding: 20px;
+  background-color: #fafafa;
 }
 
 .filter-toggle {
@@ -83,21 +95,29 @@ const goToCourse = (id) => {
   background: #f4f4f5;
   padding: 15px;
   border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+.section-title {
   margin-bottom: 20px;
 }
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 30px;
 }
 
 .knowledge-card {
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
+  min-height: 160px;
+  font-size: 16px;
+  padding: 20px;
 }
 
 .knowledge-card:hover {
   transform: translateY(-4px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 </style>

@@ -41,15 +41,13 @@ const handleSearch = () => {
 <template>
   <el-header class="custom-header" height="70px">
     <el-row :gutter="10" align="middle">
-      <!-- 左侧标题 -->
       <el-col :span="3" class="header-icon">
         <router-link to="/dashboard" class="no-link">
           <h1 class="header-text">AI面试助手</h1>
         </router-link>
       </el-col>
-      <el-col :span="2"></el-col>
-      <!-- 菜单栏 -->
-      <el-col :span="6">
+      <el-col :span="4"></el-col>
+      <el-col :span="5">
         <el-menu
             mode="horizontal"
             :default-active="activeIndex"
@@ -64,7 +62,7 @@ const handleSearch = () => {
               :class="{ 'active-menu-item': activeIndex === '/homepage' }"
               style="margin-right: 15px; font-size: large"
           >
-            首页
+            AI检索
           </el-menu-item>
           <el-menu-item
               index="/study"
@@ -79,13 +77,6 @@ const handleSearch = () => {
               style="margin-right: 15px; font-size: large"
           >
             模拟面试
-          </el-menu-item>
-          <el-menu-item
-              index="/chat"
-              :class="{ 'active-menu-item': activeIndex === '/chat' }"
-              style="margin-right: 15px; font-size: large"
-          >
-            AI问答
           </el-menu-item>
         </el-menu>
       </el-col>
@@ -105,7 +96,6 @@ const handleSearch = () => {
         </el-input>
       </el-col>
       <el-col :span="2"></el-col>
-      <!-- 右侧图标 -->
       <el-col :span="1" class="header-icon">
         <router-link to="/dashboard">
           <el-icon :size="35" color="white"><User /></el-icon>
@@ -144,7 +134,7 @@ const handleSearch = () => {
 }
 
 .header-menu {
-  font-size: large;
+  font-size: x-large;
 }
 
 /* 添加菜单项间距 */

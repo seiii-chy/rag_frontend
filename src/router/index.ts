@@ -28,7 +28,7 @@ const router = createRouter({
                 path: '/homepage',
                 name: 'HomePage',
                 component: () => import('../views/HomePage/HomePage.vue'),
-                meta: {title: '首页'}
+                meta: {title: 'AI检索'}
             },
             {
                 path: '/exam',
@@ -41,12 +41,6 @@ const router = createRouter({
                 name: 'Study',
                 component: () => import('../views/Study/Study.vue'),
                 meta: {title: '面试准备'}
-            },
-            {
-                path: '/chat',
-                name: 'Chat',
-                component: () => import('../views/AIChat/Chat.vue'),
-                meta: {title: 'AI问答'}
             }
         ]
     }, {
