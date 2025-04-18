@@ -31,6 +31,12 @@ const router = createRouter({
                 meta: {title: 'AI检索'}
             },
             {
+                path: '/pdfViewer',
+                name: 'PDFViewer',
+                component: () => import('../views/HomePage/PDFViewer.vue'),
+                meta: {title: '文献查看'}
+            },
+            {
                 path: '/exam',
                 name: 'Exam',
                 component: () => import('../views/Exam/Exam.vue'),

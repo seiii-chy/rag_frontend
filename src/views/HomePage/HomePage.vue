@@ -1,6 +1,7 @@
 <script setup>
-import { ref } from 'vue'
-import { searchWithAI } from '../../api/search'
+import {ref} from 'vue'
+import {baseSearch, getDocumentUrl, hybridSearch} from '../../api/search.ts'
+import {useRouter} from 'vue-router'
 
 const models = ['GPT-4', 'Claude 3', 'Gemini Pro', '自定义模型']
 const selectedModel = ref(models[0])
@@ -10,40 +11,67 @@ const messages = ref([])
 const history = ref([])
 const activeHistory = ref(null)
 const references = ref([])
+const router = useRouter()
 
 const handleSearch = async () => {
   if (!searchInput.value.trim()) return
   const query = searchInput.value.trim()
 
-  // 添加历史记录
+  // 保存历史
   history.value.unshift({ query })
   activeHistory.value = 0
 
-  // 用户消息显示
   messages.value.push({ type: 'user', content: query })
 
   try {
-    const res = await searchWithAI({
-      query,
-      top_k: 5,
-      model: selectedModel.value,
+    // const res = await hybridSearch(query)
+    const res = await baseSearch({
+      query: query,
+      top_k: 5
     })
-
-    messages.value.push({ type: 'ai', content: res.answer })
-
-    references.value = res.retrieved_docs.map(doc => ({
-      title: doc.question,
-      source: `匹配度: ${doc.score.toFixed(2)}`,
-    }))
-  } catch (err) {
+    console.log(res)
     messages.value.push({
       type: 'ai',
-      content: '抱歉，AI 搜索失败，请稍后再试。',
+      content: res.answer
     })
-    console.error(err)
+
+    // 获取参考文献列表
+    const docs = res.retrieved_docs || []
+
+    // 并行获取每个 doc 的真实 URL
+    references.value = await Promise.all(
+        docs.map(async (doc) => {
+          try {
+            const fileRes = await getDocumentUrl(doc.name)
+            return {
+              title: doc.content.slice(0, 50), // 取前一部分内容做标题
+              source: doc.name,
+              url: fileRes.file_url
+            }
+          } catch (err) {
+            return {
+              title: doc.content.slice(0, 50),
+              source: doc.name,
+              url: ''
+            }
+          }
+        })
+    )
+  } catch (e) {
+    messages.value.push({
+      type: 'ai',
+      content: '发生错误，请稍后再试'
+    })
   }
 
   searchInput.value = ''
+}
+
+const viewReference = (pdfUrl) => {
+  router.push({
+    path: '/pdfViewer',
+    query: { url: encodeURIComponent(pdfUrl) }
+  })
 }
 
 const changeModel = (val) => {
@@ -123,8 +151,11 @@ const selectHistory = (index) => {
           class="reference-card"
           shadow="hover"
       >
-        <p><strong>{{ ref.title }}</strong></p>
-        <p class="ref-meta">{{ ref.source }}</p>
+        <div style="cursor: pointer;" @click="viewReference(ref.url)">
+          <p><strong>{{ ref.title }}</strong></p>
+          <p class="ref-meta">{{ ref.source }}</p>
+          <el-button type="text" icon="Document" size="small">查看文献</el-button>
+        </div>
       </el-card>
     </el-aside>
   </el-container>

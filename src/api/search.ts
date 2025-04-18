@@ -6,6 +6,14 @@ interface SearchParams {
     model?: string
 }
 
-export const searchWithAI = (params: SearchParams) => {
-    return axios.post('/api/search', params).then(res => res.data)
+export const baseSearch = (params: SearchParams) => {
+    return axios.post('/search', params).then(res => res.data)
+}
+
+export const hybridSearch = (query: string, top_k = 5) => {
+    return axios.post(`/hybrid_search`, { query, top_k }).then(res => res.data)
+}
+
+export const getDocumentUrl = (name: string) => {
+    return axios.get(`/document/${name}`).then(res => res.data)
 }
