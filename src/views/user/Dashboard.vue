@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import {ref, computed} from 'vue'
-import {userInfo, userInfoUpdate} from '../../api/user.ts'
-import {parseRole, parseTime} from "../../utils"
-import {router} from '../../router'
+// import {userInfo, userInfoUpdate} from '../../api/user.ts'
+// import {router} from '../../router'
 import {UserFilled} from "@element-plus/icons-vue";
 
 const role = sessionStorage.getItem("role")
@@ -12,7 +11,7 @@ const tel = ref('')
 const address = ref('')
 const regTime = ref()
 
-const newName = ref('')
+// const newName = ref('')
 
 const displayInfoCard = ref(false)
 
@@ -21,78 +20,78 @@ const confirmPassword = ref('')
 
 const hasConfirmPasswordInput = computed(() => confirmPassword.value != '')
 const isPasswordIdentical = computed(() => password.value == confirmPassword.value)
-const changeDisabled = computed(() => {
-  return !(hasConfirmPasswordInput.value && isPasswordIdentical.value)
-})
+// const changeDisabled = computed(() => {
+//   return !(hasConfirmPasswordInput.value && isPasswordIdentical.value)
+// })
 
-getUserInfo()
+// getUserInfo()
 
-function getUserInfo() {
-  userInfo().then(res => {
-    name.value = res.data.result.name
-    tel.value = res.data.result.phone
-    storeName.value = res.data.result.storeName
-    address.value = res.data.result.address
-    regTime.value = parseTime(res.data.result.createTime)
+// function getUserInfo() {
+//   userInfo().then(res => {
+//     name.value = res.data.result.name
+//     tel.value = res.data.result.phone
+//     storeName.value = res.data.result.storeName
+//     address.value = res.data.result.address
+//     regTime.value = parseTime(res.data.result.createTime)
 
-    newName.value = name.value
-  })
-}
+//     newName.value = name.value
+//   })
+// }
 
-function updateInfo() {
-  userInfoUpdate({
-    name: newName.value,
-    password: undefined,
-    address: address.value,
-  }).then(res => {
-    if (res.data.code === '000') {
-      ElMessage({
-        customClass: 'customMessage',
-        type: 'success',
-        message: '更新成功！',
-      })
-      getUserInfo()
-    } else if (res.data.code === '400') {
-      ElMessage({
-        customClass: 'customMessage',
-        type: 'error',
-        message: res.data.msg,
-      })
-    }
-  })
-}
+// function updateInfo() {
+//   userInfoUpdate({
+//     name: newName.value,
+//     password: undefined,
+//     address: address.value,
+//   }).then(res => {
+//     if (res.data.code === '000') {
+//       ElMessage({
+//         customClass: 'customMessage',
+//         type: 'success',
+//         message: '更新成功！',
+//       })
+//       // getUserInfo()
+//     } else if (res.data.code === '400') {
+//       ElMessage({
+//         customClass: 'customMessage',
+//         type: 'error',
+//         message: res.data.msg,
+//       })
+//     }
+//   })
+// }
 
-function updatePassword() {
-  userInfoUpdate({
-    name: undefined,
-    password: password.value,
-    address: undefined
-  }).then(res => {
-    if (res.data.code === '000') {
-      password.value = ''
-      confirmPassword.value = ''
-      ElMessageBox.alert(
-          `请重新登录`,
-          '修改成功',
-          {
-            customClass: "customDialog",
-            confirmButtonText: '跳转到登录',
-            type: "success",
-            showClose: false,
-            roundButton: true,
-            center: true
-          }).then(() => router.push({path: "/login"}))
-    } else if (res.data.code === '400') {
-      ElMessage({
-        customClass: 'customMessage',
-        type: 'error',
-        message: res.data.msg,
-      })
-      password.value = ''
-      confirmPassword.value = ''
-    }
-  })
-}
+// function updatePassword() {
+//   userInfoUpdate({
+//     name: undefined,
+//     password: password.value,
+//     address: undefined
+//   }).then(res => {
+//     if (res.data.code === '000') {
+//       password.value = ''
+//       confirmPassword.value = ''
+//       ElMessageBox.alert(
+//           `请重新登录`,
+//           '修改成功',
+//           {
+//             customClass: "customDialog",
+//             confirmButtonText: '跳转到登录',
+//             type: "success",
+//             showClose: false,
+//             roundButton: true,
+//             center: true
+//           }).then(() => router.push({path: "/login"}))
+//     } else if (res.data.code === '400') {
+//       ElMessage({
+//         customClass: 'customMessage',
+//         type: 'error',
+//         message: res.data.msg,
+//       })
+//       password.value = ''
+//       confirmPassword.value = ''
+//     }
+//   })
+// }
 </script>
 
 
@@ -120,9 +119,9 @@ function updatePassword() {
           </el-button>
         </template>
 
-        <el-descriptions-item label="身份">
+        <!-- <el-descriptions-item label="身份">
           <el-tag>{{ parseRole(role) }}</el-tag>
-        </el-descriptions-item>
+        </el-descriptions-item> -->
 
         <el-descriptions-item label="所属商店" v-if="role === 'STAFF'">
           {{ storeName }}
@@ -142,7 +141,7 @@ function updatePassword() {
       </el-descriptions>
     </el-card>
 
-    <el-card v-if="displayInfoCard" class="change-card">
+    <!-- <el-card v-if="displayInfoCard" class="change-card">
       <template #header>
         <div class="card-header">
           <span>个人信息</span>
@@ -168,17 +167,17 @@ function updatePassword() {
                     v-model="address" placeholder="中华门"></el-input>
         </el-form-item>
       </el-form>
-    </el-card>
+    </el-card> -->
 
     <el-card v-if="!displayInfoCard" class="change-card">
-      <template #header>
+      <!-- <template #header>
         <div class="card-header">
           <span>修改密码</span>
           <el-button @click="updatePassword" :disabled="changeDisabled">
             修改
           </el-button>
         </div>
-      </template>
+      </template> -->
 
       <el-form>
         <el-form-item>

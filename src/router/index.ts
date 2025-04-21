@@ -6,14 +6,6 @@ const router = createRouter({
         path: '/',
         redirect: '/home',
     }, {
-        path: '/login',
-        component: () => import('../views/user/Login.vue'),
-        meta: {title: '用户登录'}
-    }, {
-        path: '/register',
-        component: () => import('../views/user/Register.vue'),
-        meta: {title: '用户注册'}
-    }, {
         path: '/home',
         redirect: '/homepage',
         component: () => import('../views/Home.vue'),
@@ -60,33 +52,14 @@ const router = createRouter({
     }]
 })
 
-router.beforeEach((to, _, next) => {
-    const token: string | null = sessionStorage.getItem('token');
-    const role: string | null = sessionStorage.getItem('role')
+// router.beforeEach((to, _, next) => {
+//     const token: string | null = sessionStorage.getItem('token');
+//     const role: string | null = sessionStorage.getItem('role')
 
-    if (to.meta.title) {
-        document.title = to.meta.title
-    }
-    next()
-    if (token) {
-        if (to.meta.permission) {
-            if (to.meta.permission.includes(role!)) {
-                next()
-            } else {
-                next('/404')
-            }
-        } else {
-            next()
-        }
-    } else {
-        if (to.path === '/login') {
-            next();
-        } else if (to.path === '/register') {
-            next()
-        } else {
-            next('/login')
-        }
-    }
-})
+//     if (to.meta.title) {
+//         document.title = to.meta.title
+//     }
+//     next()
+// })
 
 export {router}
