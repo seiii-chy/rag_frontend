@@ -20,8 +20,15 @@ interface Message {
   loading?: boolean;
   references?: any[];
 }
-
+interface Document {
+  id: string;
+  title: string;
+  content: string;
+  score: number;
+}
 const messages = ref < Message[] > ([]);
+let cachedDocs: any[] = [];
+
 let closeConnection = () => {};
 
 const formatTime = (timestamp: number) => {
@@ -37,6 +44,8 @@ const scrollToBottom = () => {
     }
   })
 }
+
+
 
 const copyText = (text: string) => {
   navigator.clipboard.writeText(text);
@@ -55,10 +64,11 @@ const handleStreamSearch = async (query: string) => {
   });
 
   // 添加初始AI消息
-  const aiMessage = {
+  const aiMessage: Message = {
     type: 'ai',
     content: '',
     loading: true,
+    references: [],
     timestamp: Date.now()
   };
   messages.value.push(aiMessage);
@@ -72,15 +82,34 @@ const handleStreamSearch = async (query: string) => {
       model: selectedModel.value
     },
     (data) => {
-      if (data === '[END]') { // 处理结束标记
-        messages.value[aiIndex].loading = false;
-        return;
+      try {
+        // 解析JSON数据
+        const packet = JSON.parse(data);
+        
+        if (packet.type === 'docs') {
+          // 处理文档数据
+          messages.value[aiIndex].references = packet.data.map((doc: any) => ({
+            id: doc.id,
+            title: doc.title,
+            content: doc.content,
+            score: doc.score
+          }));
+        } else if (packet.type === 'content') {
+          // 处理内容数据
+          messages.value[aiIndex].content += packet.data;
+          scrollToBottom();
+        } else if (data === '[END]') {
+          // 处理结束标记
+          messages.value[aiIndex].loading = false;
+        }
+      } catch (e) {
+        // 非JSON数据回退处理
+        if (data === '[END]') {
+          messages.value[aiIndex].loading = false;
+        } else if (!data.startsWith('{')) {
+          messages.value[aiIndex].content += data;
+        }
       }
-      // let cleanData = data;
-      // if(data.startsWith('data: ')) {
-      //   cleanData = data.slice(6); // 去掉前缀
-      // }
-      messages.value[aiIndex].content += data;
     },
     (error) => {
       console.error('SSE error:', error);
@@ -89,6 +118,7 @@ const handleStreamSearch = async (query: string) => {
     }
   );
 };
+
 
 const stopStream = () => {
   closeConnection();

@@ -10,6 +10,5 @@ marked.setOptions({
 
 export function renderMarkdown(content: string): string {
   // 先渲染Markdown再净化HTML
-  const cleanContent = content.replace(/^data: /gm, '');
   return DOMPurify.sanitize(marked.parse(content) as string);
 }
