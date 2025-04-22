@@ -88,11 +88,10 @@ const handleStreamSearch = async (query: string) => {
         
         if (packet.type === 'docs') {
           // 处理文档数据
-          messages.value[aiIndex].references = packet.data.map((doc: any) => ({
-            id: doc.id,
+          references .value = packet.data.map((doc: Document) => ({
             title: doc.title,
-            content: doc.content,
-            score: doc.score
+            url: getDocumentUrl(doc.id),
+            source: doc.content.slice(0, 50) + '...'
           }));
         } else if (packet.type === 'content') {
           // 处理内容数据
