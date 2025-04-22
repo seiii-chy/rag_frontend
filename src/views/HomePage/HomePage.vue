@@ -1,71 +1,149 @@
-<script setup>
-import {ref} from 'vue'
-import {baseSearch, getDocumentUrl, hybridSearch} from '../../api/search.ts'
-import {useRouter} from 'vue-router'
+<script setup lang="ts">
+import { ref, nextTick } from 'vue'
+import { baseSearch, getDocumentUrl, createSSEConnection  } from '../../api/search.ts'
+import { useRouter } from 'vue-router'
+import { MagicStick, Cpu, Food, Setting } from '@element-plus/icons-vue'
+import { renderMarkdown } from '../../utils/markdown';
+import '../../styles/markdown.scss';
 
-const models = ['GPT-4', 'Claude 3', 'Gemini Pro', '自定义模型']
+const models = ['混元', 'DeepseekV3', '豆包', '自定义模型']
 const selectedModel = ref(models[0])
 
 const searchInput = ref('')
-const messages = ref([])
 const history = ref([])
 const activeHistory = ref(null)
 const references = ref([])
 const router = useRouter()
+interface Message {
+  type: 'user' | 'ai';
+  content: string;
+  loading?: boolean;
+  references?: any[];
+}
+interface Document {
+  id: string;
+  title: string;
+  content: string;
+  score: number;
+}
+const messages = ref < Message[] > ([]);
+let cachedDocs: any[] = [];
 
+let closeConnection = () => {};
+
+const formatTime = (timestamp: number) => {
+  return new Date(timestamp).toLocaleTimeString()
+}
+
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    const container = document.querySelector('.chat-box-wrapper')
+    if (container) {
+      container.scrollTop = container.scrollHeight
+    }
+  })
+}
+
+
+
+const copyText = (text: string) => {
+  navigator.clipboard.writeText(text);
+  ElMessage.success('已复制');
+};
+// 处理流式搜索
+const handleStreamSearch = async (query: string) => {
+  // 关闭现有连接
+  closeConnection();
+  
+  // 添加用户消息
+  messages.value.push({
+    type: 'user',
+    content: query,
+    timestamp: Date.now()
+  });
+
+  // 添加初始AI消息
+  const aiMessage: Message = {
+    type: 'ai',
+    content: '',
+    loading: true,
+    references: [],
+    timestamp: Date.now()
+  };
+  messages.value.push(aiMessage);
+  const aiIndex = messages.value.length - 1;
+
+  // 创建SSE连接
+  closeConnection = createSSEConnection(
+    {
+      query,
+      top_k: 5,
+      model: selectedModel.value
+    },
+    (data) => {
+      try {
+        // 解析JSON数据
+        const packet = JSON.parse(data);
+        
+        if (packet.type === 'docs') {
+          // 处理文档数据
+          references .value = packet.data.map((doc: Document) => ({
+            title: doc.title,
+            url: getDocumentUrl(doc.id),
+            source: doc.content.slice(0, 50) + '...'
+          }));
+        } else if (packet.type === 'content') {
+          // 处理内容数据
+          messages.value[aiIndex].content += packet.data;
+          scrollToBottom();
+        } else if (data === '[END]') {
+          // 处理结束标记
+          messages.value[aiIndex].loading = false;
+        }
+      } catch (e) {
+        // 非JSON数据回退处理
+        if (data === '[END]') {
+          messages.value[aiIndex].loading = false;
+        } else if (!data.startsWith('{')) {
+          messages.value[aiIndex].content += data;
+        }
+      }
+    },
+    (error) => {
+      console.error('SSE error:', error);
+      messages.value[aiIndex].content += '\n\n[连接异常中断]';
+      messages.value[aiIndex].loading = false;
+    }
+  );
+};
+
+
+const stopStream = () => {
+  closeConnection();
+  // 找到最后一条AI消息更新状态
+  const lastAiMsg = [...messages.value].reverse().find(m => m.type === 'ai');
+  if (lastAiMsg) {
+    lastAiMsg.loading = false;
+    if (lastAiMsg.content === '') {
+      lastAiMsg.content = '生成已停止';
+    }
+  }
+};
+// 修改原handleSearch方法
 const handleSearch = async () => {
-  if (!searchInput.value.trim()) return
-  const query = searchInput.value.trim()
+  if (!searchInput.value.trim()) return;
+  const query = searchInput.value.trim();
 
   // 保存历史
-  history.value.unshift({ query })
-  activeHistory.value = 0
+  history.value.unshift({ query });
+  activeHistory.value = 0;
 
-  messages.value.push({ type: 'user', content: query })
+  // 调用流式搜索
+  await handleStreamSearch(query);
 
-  try {
-    // const res = await hybridSearch(query)
-    const res = await baseSearch({
-      query: query,
-      top_k: 5
-    })
-    console.log(res)
-    messages.value.push({
-      type: 'ai',
-      content: res.answer
-    })
-
-    // 获取参考文献列表
-    const docs = res.retrieved_docs || []
-
-    // 并行获取每个 doc 的真实 URL
-    references.value = await Promise.all(
-        docs.map(async (doc) => {
-          try {
-            const fileRes = await getDocumentUrl(doc.name)
-            return {
-              title: doc.content.slice(0, 50), // 取前一部分内容做标题
-              source: doc.name,
-              url: fileRes.file_url
-            }
-          } catch (err) {
-            return {
-              title: doc.content.slice(0, 50),
-              source: doc.name,
-              url: ''
-            }
-          }
-        })
-    )
-  } catch (e) {
-    messages.value.push({
-      type: 'ai',
-      content: '发生错误，请稍后再试'
-    })
-  }
-
-  searchInput.value = ''
-}
+  searchInput.value = '';
+};
 
 const viewReference = (pdfUrl) => {
   router.push({
@@ -90,67 +168,120 @@ const selectHistory = (index) => {
     <!-- 左侧：搜索历史 -->
     <el-aside width="15%" class="history-panel">
       <!-- 顶部工具栏：模型选择 -->
-      <el-header class="toolbar">
-        <el-select v-model="selectedModel" placeholder="选择模型" @change="changeModel">
-          <el-option
-              v-for="model in models"
-              :key="model"
-              :label="model"
-              :value="model"
-          />
+      <div class="model-selector">
+        <el-select v-model="selectedModel" placeholder="选择AI模型" popper-class="model-select-dropdown"
+          @change="changeModel">
+          <el-option v-for="model in models" :key="model" :label="model" :value="model">
+            <span class="model-option">
+              <el-icon v-if="model === '混元'" class="model-icon">
+                <MagicStick />
+              </el-icon>
+              <el-icon v-else-if="model === 'DeepseekV3'" class="model-icon">
+                <Cpu />
+              </el-icon>
+              <el-icon v-else-if="model === '豆包'" class="model-icon">
+                <Food />
+              </el-icon>
+              <el-icon v-else class="model-icon">
+                <Setting />
+              </el-icon>
+              {{ model }}
+            </span>
+          </el-option>
         </el-select>
-      </el-header>
+      </div>
       <h3>搜索历史</h3>
       <el-menu :default-active="activeHistory" class="history-menu">
-        <el-menu-item
-            v-for="(item, index) in history"
-            :key="index"
-            @click="selectHistory(index)"
-        >
+        <el-menu-item v-for="(item, index) in history" :key="index" @click="selectHistory(index)">
           {{ item.query }}
         </el-menu-item>
       </el-menu>
     </el-aside>
 
-    <!-- 中间：AI 聊天窗口 -->
+
+    <!-- 中间：聊天区 -->
     <el-container>
-      <!-- 聊天内容区 -->
       <el-main class="chat-main">
-        <div class="chat-box" ref="chatBox">
-          <div
-              v-for="(msg, index) in messages"
-              :key="index"
-              :class="['message', msg.type]"
-          >
-            <div class="message-content">{{ msg.content }}</div>
+        <div class="message-container">
+          <div class="chat-box">
+            <div v-for="(msg, index) in messages" :key="index"
+              :class="['message-bubble', msg.type, { loading: msg.loading }]">
+              <!-- AI消息增加头像 -->
+              <div v-if="msg.type === 'ai'" class="ai-avatar">
+                <svg-icon icon-class="ai" />
+              </div>
+
+              <div class="bubble-content">
+                <!-- 流式消息内容 -->
+                <div class="message-text">
+                  <div v-if="msg.type === 'ai'" class="markdown-body" v-html="renderMarkdown(msg.content)"></div>
+                  <template v-else>{{ msg.content }}</template>
+
+                  <!-- 流式加载指示器 -->
+                  <div v-if="msg.loading" class="stream-loader">
+                    <div class="loader-dot"></div>
+                    <div class="loader-dot"></div>
+                    <div class="loader-dot"></div>
+                  </div>
+                </div>
+                <!-- 消息底部区域 -->
+                <div class="message-footer">
+                  <!-- 时间戳 -->
+                  <div class="message-time">{{ formatTime(msg.timestamp) }}</div>
+
+                  <!-- 操作按钮 (只在AI消息且非加载状态显示) -->
+                  <div v-if="msg.type === 'ai' && !msg.loading" class="message-actions">
+                    <el-button size="small" @click="copyText(msg.content)" circle>
+                      <el-icon>
+                        <DocumentCopy />
+                      </el-icon>
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 用户消息头像 -->
+              <div v-if="msg.type === 'user'" class="user-avatar">
+                <svg-icon icon-class="user" />
+              </div>
+            </div>
+          </div>
+          <!-- 加载状态 -->
+          <div v-if="loading" class="loading-indicator">
+            <div class="dot-flashing"></div>
           </div>
         </div>
 
-        <!-- 输入框 -->
-        <div class="chat-input-bar">
-          <el-input
-              v-model="searchInput"
-              placeholder="输入你的问题或关键词..."
-              type="textarea"
-              :rows="3"
-              @keyup.enter.native="handleSearch"
-          />
-          <el-button type="primary" @click="handleSearch">
-            搜索
-          </el-button>
+        <!-- 输入区 -->
+        <div class="fixed-input-bar">
+          <div class="chat-input-bar">
+            <el-input v-model="searchInput" placeholder="输入问题，按 Enter 发送" type="textarea" :rows="2"
+              class="enhanced-input" @keyup.enter.native="handleSearch">
+              <template #prefix>
+                <el-icon>
+                  <Promotion />
+                </el-icon>
+              </template>
+            </el-input>
+            <el-button type="primary" class="send-btn" :loading="loading" @click="handleSearch">
+              <template #icon>
+                <el-icon>
+                  <Position />
+                </el-icon>
+              </template>
+              发送
+            </el-button>
+          </div>
         </div>
       </el-main>
     </el-container>
 
+
+
     <!-- 右侧：文献展示 -->
     <el-aside width="20%" class="reference-panel">
       <h3>参考文献</h3>
-      <el-card
-          v-for="(ref, index) in references"
-          :key="index"
-          class="reference-card"
-          shadow="hover"
-      >
+      <el-card v-for="(ref, index) in references" :key="index" class="reference-card" shadow="hover">
         <div style="cursor: pointer;" @click="viewReference(ref.url)">
           <p><strong>{{ ref.title }}</strong></p>
           <p class="ref-meta">{{ ref.source }}</p>
@@ -161,86 +292,364 @@ const selectHistory = (index) => {
   </el-container>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .ai-search-container {
   height: 92vh;
+  background: #f8fafc;
+  display: flex;
+  position: relative;
 }
 
-.toolbar {
-  background-color: #f4f4f5;
-  padding: 10px;
+/* 聊天消息气泡 */
+.message-bubble {
+  max-width: 72%;
+  min-width: 240px;
+  margin: 12px 20px;
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  transition: all 0.3s ease;
+
+  &.user {
+    flex-direction: row-reverse;
+    margin-left: auto;
+
+    .bubble-content {
+      background: linear-gradient(135deg, #4CAF50, #43A047);
+      color: white;
+      border-radius: 18px 4px 18px 18px;
+    }
+  }
+
+  &.ai {
+    .bubble-content {
+      background: white;
+      color: #1a1a1a;
+      border-radius: 4px 18px 18px 18px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+  }
+}
+
+.bubble-content {
+  padding: 14px 18px;
+  position: relative;
+  line-height: 1.6;
+}
+
+.message-time {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 6px;
+  text-align: right;
+}
+
+.ai .message-time {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+/* 头像样式 */
+.ai-avatar,
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ai-avatar {
+  background: linear-gradient(45deg, #7f00ff, #e100ff);
+  color: white;
+}
+
+.user-avatar {
+  background: #4CAF50;
+  color: white;
+}
+
+/* 输入栏美化 */
+.enhanced-input {
+  :deep(.el-textarea__inner) {
+    border-radius: 24px;
+    padding: 12px 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+
+    &:focus {
+      box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+    }
+  }
+}
+
+.send-btn {
+  height: 48px;
+  border-radius: 24px;
+  padding: 0 28px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+  }
+}
+
+/* 加载动画 */
+.dot-flashing {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background-color: #4CAF50;
+  color: #4CAF50;
+  animation: dot-flashing 1s infinite linear alternate;
+  animation-delay: 0.5s;
+
+  &::before,
+  &::after {
+    content: '';
+    display: inline-block;
+    position: absolute;
+    top: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background-color: #4CAF50;
+    color: #4CAF50;
+    animation: dot-flashing 1s infinite alternate;
+  }
+
+  &::before {
+    left: -12px;
+    animation-delay: 0s;
+  }
+
+  &::after {
+    left: 12px;
+    animation-delay: 1s;
+  }
+}
+
+@keyframes dot-flashing {
+  0% {
+    background-color: #4CAF50;
+  }
+
+  50%,
+  100% {
+    background-color: rgba(76, 175, 80, 0.2);
+  }
+}
+
+/* 模型选择优化 */
+:deep(.el-select) {
+  .el-input__wrapper {
+    border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .el-select-dropdown__item {
+    padding: 12px 20px;
+    border-radius: 12px;
+    margin: 4px;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: #f0f9ff;
+    }
+
+    &.selected {
+      background: linear-gradient(45deg, #4CAF50, #43A047);
+      color: white;
+    }
+  }
+}
+
+.chat-input-bar {
+  position: sticky;
+  bottom: 0;
+  background: #f8fafc;
+  padding: 16px;
+  border-top: 1px solid #e4e7ed;
+  z-index: 10;
+}
+
+/* 调整原有chat-box样式 */
+.chat-box {
+  // min-height: 100%;
+  display: block;
+  flex-direction: column;
+}
+
+
+.model-selector {
+  padding: 16px 12px 24px;
+  /* 下边距加大 */
+  position: relative;
+
+  &:after {
+    content: "";
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #e4e7ed, transparent);
+  }
+
+
+  :deep(.el-input) {
+    .el-input__wrapper {
+      height: 40px;
+      display: flex;
+      align-items: center;
+
+      .el-input__inner {
+        line-height: 24px;
+        padding-top: 2px;
+        vertical-align: middle;
+      }
+
+      .el-input__suffix {
+        display: flex;
+        align-items: center;
+      }
+    }
+  }
+}
+
+/* 选择框样式 */
+:deep(.model-selector .el-input__wrapper) {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  padding: 8px 15px;
+  border: 1px solid #ebeef5;
+
+  &:hover {
+    box-shadow: 0 2px 12px rgba(64, 158, 255, 0.2);
+  }
+}
+
+/* 下拉菜单样式 */
+.model-select-dropdown {
+  .el-select-dropdown__item {
+    height: 40px;
+    /* 固定选项高度 */
+    display: flex;
+    align-items: center;
+    /* 垂直居中 */
+
+    &.selected {
+      background: linear-gradient(135deg, #f0f7ff, #e1f0ff);
+      color: #409EFF;
+    }
+  }
+
+  .model-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .model-icon {
+    font-size: 16px;
+    color: #409EFF;
+  }
+}
+
+/* 历史标题下移 */
+.history-title {
+  margin-top: 8px;
+  padding: 0 12px;
+  color: #606266;
+  font-weight: 500;
 }
 
 .chat-main {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  background: #fdfdfd;
-  padding: 20px;
   height: 100%;
+  position: relative;
+  /* 新增 */
 }
 
-.chat-box {
+/* 消息容器设置 */
+.message-container {
   flex: 1;
   overflow-y: auto;
-  margin-bottom: 10px;
+  padding-bottom: 20px;
+  /* 给输入框留出空间 */
+}
+
+/* 固定在底部的输入栏 */
+.fixed-input-bar {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  padding: 16px;
+  border-top: 1px solid #e4e7ed;
+  z-index: 10;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+/* 消息气泡增强样式 */
+.message-bubble {
+  /* 原有样式保持不变 */
+  
+  &.loading {
+    .bubble-content {
+      border-color: #e4e7ed;
+    }
+  }
+}
+
+/* 消息底部区域 */
+.message-footer {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
 }
 
-.message {
-  max-width: 80%;
-  padding: 10px;
-  border-radius: 8px;
-  font-size: 14px;
+/* 流式加载指示器 */
+.stream-loader {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+  
+  .loader-dot {
+    width: 8px;
+    height: 8px;
+    background: #409EFF;
+    border-radius: 50%;
+    animation: pulse 1.4s infinite ease-in-out;
+    
+    &:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    
+    &:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+  }
 }
 
-.message.user {
-  align-self: flex-end;
-  background: #4caf50;
-  color: white;
+@keyframes pulse {
+  0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+  30% { opacity: 1; transform: scale(1); }
 }
 
-.message.ai {
-  align-self: flex-start;
-  background: #e1e1e1;
-  color: black;
-}
-
-.chat-input-bar {
+/* 操作按钮样式 */
+.message-actions {
   display: flex;
-  gap: 10px;
-}
-
-.history-panel {
-  background: #fafafa;
-  padding: 10px;
-  border-right: 1px solid #ddd;
-}
-
-.history-menu {
-  border: none;
-  background: none;
-}
-
-.reference-panel {
-  background: #fafafa;
-  padding: 10px;
-  border-left: 1px solid #ddd;
-  overflow-y: auto;
-}
-
-.reference-card {
-  margin-bottom: 10px;
-}
-
-.ref-meta {
-  font-size: 12px;
-  color: #666;
+  gap: 8px;
+  
+  .el-button {
+    padding: 4px;
+    height: auto;
+  }
 }
 </style>
-
