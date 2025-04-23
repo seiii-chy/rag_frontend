@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
-import { baseSearch, getDocumentUrl, createSSEConnection  } from '../../api/search.ts'
+import { getDocumentUrl, createSSEConnection  } from '../../api/search.ts'
 import { useRouter } from 'vue-router'
-import { MagicStick, Cpu, Food, Setting } from '@element-plus/icons-vue'
+import {MagicStick, Cpu, Food, Setting, DocumentCopy, Promotion, Position} from '@element-plus/icons-vue'
 import { renderMarkdown } from '../../utils/markdown';
 import '../../styles/markdown.scss';
 
@@ -10,23 +10,27 @@ const models = ['混元', 'DeepseekV3', '豆包', '自定义模型']
 const selectedModel = ref(models[0])
 
 const searchInput = ref('')
-const history = ref([])
-const activeHistory = ref(null)
+const history = ref<{ query: string }[]>(JSON.parse(sessionStorage.getItem('chat_history') || '[]'))
+const activeHistory = ref<number | null>(null)
 const references = ref([])
 const router = useRouter()
+
 interface Message {
   type: 'user' | 'ai';
   content: string;
+  timestamp: number;
   loading?: boolean;
   references?: any[];
 }
+
 interface Document {
   id: string;
   title: string;
   content: string;
   score: number;
 }
-const messages = ref < Message[] > ([]);
+
+const messages = ref<Message[]>([]);
 let cachedDocs: any[] = [];
 
 let closeConnection = () => {};
@@ -34,7 +38,6 @@ let closeConnection = () => {};
 const formatTime = (timestamp: number) => {
   return new Date(timestamp).toLocaleTimeString()
 }
-
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -45,25 +48,21 @@ const scrollToBottom = () => {
   })
 }
 
-
-
 const copyText = (text: string) => {
   navigator.clipboard.writeText(text);
   ElMessage.success('已复制');
 };
+
 // 处理流式搜索
 const handleStreamSearch = async (query: string) => {
-  // 关闭现有连接
   closeConnection();
-  
-  // 添加用户消息
+
   messages.value.push({
     type: 'user',
     content: query,
     timestamp: Date.now()
   });
 
-  // 添加初始AI消息
   const aiMessage: Message = {
     type: 'ai',
     content: '',
@@ -74,54 +73,64 @@ const handleStreamSearch = async (query: string) => {
   messages.value.push(aiMessage);
   const aiIndex = messages.value.length - 1;
 
-  // 创建SSE连接
   closeConnection = createSSEConnection(
-    {
-      query,
-      top_k: 5,
-      model: selectedModel.value
-    },
-    (data) => {
-      try {
-        // 解析JSON数据
-        const packet = JSON.parse(data);
-        
-        if (packet.type === 'docs') {
-          // 处理文档数据
-          references .value = packet.data.map((doc: Document) => ({
-            title: doc.title,
-            url: getDocumentUrl(doc.id),
-            source: doc.content.slice(0, 50) + '...'
-          }));
-        } else if (packet.type === 'content') {
-          // 处理内容数据
-          messages.value[aiIndex].content += packet.data;
-          scrollToBottom();
-        } else if (data === '[END]') {
-          // 处理结束标记
-          messages.value[aiIndex].loading = false;
+      {
+        query,
+        top_k: 5,
+        model: selectedModel.value
+      },
+      (data) => {
+        try {
+          const packet = JSON.parse(data);
+
+          if (packet.type === 'docs') {
+            const docs = packet.data
+
+            Promise.all(
+                docs.map(async (doc: Document) => {
+                  try {
+                    const res = await getDocumentUrl(doc.title)
+                    console.log(res)
+                    return {
+                      title: doc.title,
+                      url: res,
+                      source: doc.content.slice(0, 50) + '...'
+                    }
+                  } catch (err) {
+                    return {
+                      title: doc.title,
+                      url: '',
+                      source: doc.content.slice(0, 50) + '...'
+                    }
+                  }
+                })
+            ).then((result) => {
+              references.value = result
+            })
+          }else if (packet.type === 'content') {
+            messages.value[aiIndex].content += packet.data;
+            scrollToBottom();
+          } else if (data === '[END]') {
+            messages.value[aiIndex].loading = false;
+          }
+        } catch (e) {
+          if (data === '[END]') {
+            messages.value[aiIndex].loading = false;
+          } else if (!data.startsWith('{')) {
+            messages.value[aiIndex].content += data;
+          }
         }
-      } catch (e) {
-        // 非JSON数据回退处理
-        if (data === '[END]') {
-          messages.value[aiIndex].loading = false;
-        } else if (!data.startsWith('{')) {
-          messages.value[aiIndex].content += data;
-        }
+      },
+      (error) => {
+        console.error('SSE error:', error);
+        messages.value[aiIndex].content += '\n\n[连接异常中断]';
+        messages.value[aiIndex].loading = false;
       }
-    },
-    (error) => {
-      console.error('SSE error:', error);
-      messages.value[aiIndex].content += '\n\n[连接异常中断]';
-      messages.value[aiIndex].loading = false;
-    }
   );
 };
 
-
 const stopStream = () => {
   closeConnection();
-  // 找到最后一条AI消息更新状态
   const lastAiMsg = [...messages.value].reverse().find(m => m.type === 'ai');
   if (lastAiMsg) {
     lastAiMsg.loading = false;
@@ -130,20 +139,22 @@ const stopStream = () => {
     }
   }
 };
-// 修改原handleSearch方法
+
+// 修改 handleSearch 方法，加入 sessionStorage 更新
 const handleSearch = async () => {
   if (!searchInput.value.trim()) return;
   const query = searchInput.value.trim();
 
-  // 保存历史
   history.value.unshift({ query });
+  sessionStorage.setItem('chat_history', JSON.stringify(history.value)); // 更新缓存
+
   activeHistory.value = 0;
 
-  // 调用流式搜索
   await handleStreamSearch(query);
 
   searchInput.value = '';
 };
+
 
 const viewReference = (pdfUrl) => {
   router.push({
@@ -210,7 +221,10 @@ const selectHistory = (index) => {
               <div v-if="msg.type === 'ai'" class="ai-avatar">
                 <svg-icon icon-class="ai" />
               </div>
-
+              <!-- 用户消息头像 -->
+              <div v-if="msg.type === 'user'" class="user-avatar">
+                <svg-icon icon-class="user" />
+              </div>
               <div class="bubble-content">
                 <!-- 流式消息内容 -->
                 <div class="message-text">
@@ -238,11 +252,6 @@ const selectHistory = (index) => {
                     </el-button>
                   </div>
                 </div>
-              </div>
-
-              <!-- 用户消息头像 -->
-              <div v-if="msg.type === 'user'" class="user-avatar">
-                <svg-icon icon-class="user" />
               </div>
             </div>
           </div>
@@ -389,6 +398,7 @@ const selectHistory = (index) => {
   border-radius: 24px;
   padding: 0 28px;
   transition: all 0.3s ease;
+  margin-top: 10px;
 
   &:hover {
     transform: translateY(-2px);
@@ -473,6 +483,7 @@ const selectHistory = (index) => {
   background: #f8fafc;
   padding: 16px;
   border-top: 1px solid #e4e7ed;
+  display: flex;
   z-index: 10;
 }
 
@@ -597,7 +608,7 @@ const selectHistory = (index) => {
 /* 消息气泡增强样式 */
 .message-bubble {
   /* 原有样式保持不变 */
-  
+
   &.loading {
     .bubble-content {
       border-color: #e4e7ed;
@@ -619,18 +630,18 @@ const selectHistory = (index) => {
   gap: 6px;
   margin-left: 8px;
   vertical-align: middle;
-  
+
   .loader-dot {
     width: 8px;
     height: 8px;
     background: #409EFF;
     border-radius: 50%;
     animation: pulse 1.4s infinite ease-in-out;
-    
+
     &:nth-child(2) {
       animation-delay: 0.2s;
     }
-    
+
     &:nth-child(3) {
       animation-delay: 0.4s;
     }
@@ -646,7 +657,7 @@ const selectHistory = (index) => {
 .message-actions {
   display: flex;
   gap: 8px;
-  
+
   .el-button {
     padding: 4px;
     height: auto;

@@ -1,23 +1,63 @@
+<template>
+  <div style="padding: 20px; position: relative; height: 90vh;">
+    <h2>文献预览</h2>
+    <div ref="containerRef" class="pdfViewerContainer"></div>
+  </div>
+</template>
+
 <script setup>
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { onMounted, ref } from 'vue'
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf'
+import { PDFViewer, EventBus } from 'pdfjs-dist/web/pdf_viewer' // 引入 EventBus
+import 'pdfjs-dist/web/pdf_viewer.css'
 
 const route = useRoute()
-const pdfUrl = ref(decodeURIComponent(route.query.url || ''))
+const pdfUrl = decodeURIComponent(route.query.url || '')
+const containerRef = ref(null)
 
-onMounted(() => {
-  console.log('加载 PDF：', pdfUrl.value)
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/legacy/build/pdf.worker.js',
+    import.meta.url
+).toString()
+
+onMounted(async () => {
+  if (!pdfUrl) return
+
+  const container = containerRef.value
+  if (!container) return
+
+  try {
+    // 内部结构
+    container.innerHTML = `<div class="pdfViewer"></div>`
+
+    const loadingTask = pdfjsLib.getDocument(pdfUrl)
+    const pdf = await loadingTask.promise
+
+    // --- 关键在于 eventBus ---
+    const eventBus = new EventBus();
+
+    const viewer = new PDFViewer({
+      container: container,
+      viewer: container.querySelector('.pdfViewer'),
+      eventBus: eventBus,  // <--- 这个不能少!!
+    })
+    viewer.setDocument(pdf)
+  } catch (err) {
+    console.error('加载 PDF 出错:', err)
+  }
 })
 </script>
 
-<template>
-  <div style="padding: 20px">
-    <h2>文献预览</h2>
-    <iframe
-        v-if="pdfUrl"
-        :src="pdfUrl"
-        style="width: 100%; height: 90vh; border: none"
-    />
-    <p v-else>未指定 PDF 链接</p>
-  </div>
-</template>
+<style scoped>
+.pdfViewerContainer {
+  position: absolute;
+  top: 10px; left: 0; right: 0; bottom: 0;
+  overflow: auto;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+.pdfViewer {
+  min-height: 100vh;
+}
+</style>
