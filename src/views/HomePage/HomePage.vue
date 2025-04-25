@@ -12,8 +12,9 @@ const selectedModel = ref(models[0])
 const searchInput = ref('')
 const history = ref<{ query: string }[]>(JSON.parse(sessionStorage.getItem('chat_history') || '[]'))
 const activeHistory = ref<number | null>(null)
-const references = ref([])
+const references = ref<Document[]>()
 const router = useRouter()
+const loading = ref(false)
 
 interface Message {
   type: 'user' | 'ai';
@@ -28,10 +29,11 @@ interface Document {
   title: string;
   content: string;
   score: number;
+  url: string;
 }
 
 const messages = ref<Message[]>([]);
-let cachedDocs: any[] = [];
+// let cachedDocs: any[] = [];
 
 let closeConnection = () => {};
 
@@ -106,7 +108,7 @@ const handleStreamSearch = async (query: string) => {
                 })
             ).then((result) => {
               const seen = new Set()
-              references.value = result.filter(doc => {
+              references.value = (result as Document[]).filter(doc => {
                 if (seen.has(doc.title)) return false
                 seen.add(doc.title)
                 return true
@@ -134,16 +136,17 @@ const handleStreamSearch = async (query: string) => {
   );
 };
 
-const stopStream = () => {
-  closeConnection();
-  const lastAiMsg = [...messages.value].reverse().find(m => m.type === 'ai');
-  if (lastAiMsg) {
-    lastAiMsg.loading = false;
-    if (lastAiMsg.content === '') {
-      lastAiMsg.content = '生成已停止';
-    }
-  }
-};
+// 由于未实现，为了CI/CD绕过绕过ts检查先注释掉 TODO
+// const stopStream = () => {
+//   closeConnection();
+//   const lastAiMsg = [...messages.value].reverse().find(m => m.type === 'ai');
+//   if (lastAiMsg) {
+//     lastAiMsg.loading = false;
+//     if (lastAiMsg.content === '') {
+//       lastAiMsg.content = '生成已停止';
+//     }
+//   }
+// };
 
 const handleSearch = async () => {
   if (!searchInput.value.trim()) return;
@@ -160,18 +163,18 @@ const handleSearch = async () => {
 };
 
 
-const viewReference = (pdfUrl) => {
+const viewReference = (pdfUrl: string) => {
   router.push({
     path: '/pdfViewer',
     query: { url: encodeURIComponent(pdfUrl) }
   })
 }
 
-const changeModel = (val) => {
+const changeModel = (val: string) => {
   console.log('当前选择模型:', val)
 }
 
-const selectHistory = (index) => {
+const selectHistory = (index: number) => {
   activeHistory.value = index
   searchInput.value = history.value[index].query
   handleSearch()
@@ -206,7 +209,7 @@ const selectHistory = (index) => {
         </el-select>
       </div>
       <h3>搜索历史</h3>
-      <el-menu :default-active="activeHistory" class="history-menu">
+      <el-menu :default-active="String(activeHistory)" class="history-menu">
         <el-menu-item v-for="(item, index) in history" :key="index" @click="selectHistory(index)">
           {{ item.query }}
         </el-menu-item>
