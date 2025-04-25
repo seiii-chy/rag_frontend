@@ -105,7 +105,12 @@ const handleStreamSearch = async (query: string) => {
                   }
                 })
             ).then((result) => {
-              references.value = result
+              const seen = new Set()
+              references.value = result.filter(doc => {
+                if (seen.has(doc.title)) return false
+                seen.add(doc.title)
+                return true
+              })
             })
           }else if (packet.type === 'content') {
             messages.value[aiIndex].content += packet.data;
@@ -140,7 +145,6 @@ const stopStream = () => {
   }
 };
 
-// 修改 handleSearch 方法，加入 sessionStorage 更新
 const handleSearch = async () => {
   if (!searchInput.value.trim()) return;
   const query = searchInput.value.trim();
@@ -292,8 +296,7 @@ const selectHistory = (index) => {
       <h3>参考文献</h3>
       <el-card v-for="(ref, index) in references" :key="index" class="reference-card" shadow="hover">
         <div style="cursor: pointer;" @click="viewReference(ref.url)">
-          <p><strong>{{ ref.title }}</strong></p>
-          <p class="ref-meta">{{ ref.source }}</p>
+          <p style="font-size: x-large"><strong>{{ ref.title }}</strong></p>
           <el-button type="text" icon="Document" size="small">查看文献</el-button>
         </div>
       </el-card>

@@ -9,7 +9,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf'
-import { PDFViewer, EventBus } from 'pdfjs-dist/web/pdf_viewer' // 引入 EventBus
+import { PDFViewer, EventBus } from 'pdfjs-dist/web/pdf_viewer'
 import 'pdfjs-dist/web/pdf_viewer.css'
 
 const route = useRoute()
@@ -28,19 +28,17 @@ onMounted(async () => {
   if (!container) return
 
   try {
-    // 内部结构
     container.innerHTML = `<div class="pdfViewer"></div>`
 
     const loadingTask = pdfjsLib.getDocument(pdfUrl)
     const pdf = await loadingTask.promise
 
-    // --- 关键在于 eventBus ---
     const eventBus = new EventBus();
 
     const viewer = new PDFViewer({
       container: container,
       viewer: container.querySelector('.pdfViewer'),
-      eventBus: eventBus,  // <--- 这个不能少!!
+      eventBus: eventBus,
     })
     viewer.setDocument(pdf)
   } catch (err) {
