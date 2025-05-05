@@ -1,5 +1,6 @@
 <template>
-  <div style="padding: 20px; position: relative; height: 90vh;">
+  <el-button type="primary" @click="router.back()" class="returnButton">返回</el-button>
+  <div style="padding: 20px; position: relative; height: 85vh;">
     <h2>文献预览</h2>
     <div ref="containerRef" class="pdfViewerContainer"></div>
   </div>
@@ -11,6 +12,7 @@ import { useRoute } from 'vue-router'
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf'
 import { PDFViewer, EventBus } from 'pdfjs-dist/web/pdf_viewer'
 import 'pdfjs-dist/web/pdf_viewer.css'
+import {router} from "../../router/index.ts";
 
 const route = useRoute()
 const pdfUrl = decodeURIComponent(route.query.url || '')
@@ -48,6 +50,14 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.returnButton{
+  position: relative;
+  width: 5%;
+  height: auto;
+  left: 20px;
+  top: 10px;
+}
+
 .pdfViewerContainer {
   position: absolute;
   top: 10px; left: 0; right: 0; bottom: 0;

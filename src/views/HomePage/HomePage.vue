@@ -12,7 +12,7 @@ const selectedModel = ref(models[0])
 const searchInput = ref('')
 const history = ref<{ query: string }[]>(JSON.parse(sessionStorage.getItem('chat_history') || '[]'))
 const activeHistory = ref<number | null>(null)
-const references = ref<Document[]>()
+const references = ref<Document[]>([])
 const router = useRouter()
 const loading = ref(false)
 
@@ -113,7 +113,7 @@ const handleStreamSearch = async (query: string) => {
                 seen.add(doc.title)
                 return true
               })
-            })
+            });
           }else if (packet.type === 'content') {
             messages.value[aiIndex].content += packet.data;
             scrollToBottom();
@@ -208,7 +208,7 @@ const selectHistory = (index: number) => {
           </el-option>
         </el-select>
       </div>
-      <h3>搜索历史</h3>
+      <h2>搜索历史</h2>
       <el-menu :default-active="String(activeHistory)" class="history-menu">
         <el-menu-item v-for="(item, index) in history" :key="index" @click="selectHistory(index)">
           {{ item.query }}
@@ -296,7 +296,8 @@ const selectHistory = (index: number) => {
 
     <!-- 右侧：文献展示 -->
     <el-aside width="20%" class="reference-panel">
-      <h3>参考文献</h3>
+      <h2>参考文献</h2>
+      <el-text v-if="references.length === 0" style="font-size: large; margin-top: 100px">暂无</el-text>
       <el-card v-for="(ref, index) in references" :key="index" class="reference-card" shadow="hover">
         <div style="cursor: pointer;" @click="viewReference(ref.url)">
           <p style="font-size: x-large"><strong>{{ ref.title }}</strong></p>
@@ -577,6 +578,11 @@ const selectHistory = (index: number) => {
   }
 }
 
+.history-panel {
+  border-right: 2px solid #dcdfe6; /* 灰色分隔线 */
+  padding: 10px;
+}
+
 /* 历史标题下移 */
 .history-title {
   margin-top: 8px;
@@ -590,7 +596,7 @@ const selectHistory = (index: number) => {
   flex-direction: column;
   height: 100%;
   position: relative;
-  /* 新增 */
+  padding: 10px;
 }
 
 /* 消息容器设置 */
@@ -668,5 +674,10 @@ const selectHistory = (index: number) => {
     padding: 4px;
     height: auto;
   }
+}
+
+.reference-panel{
+  border-left: 1px solid #dcdfe6; /* 灰色分隔线 */
+  padding: 10px;
 }
 </style>

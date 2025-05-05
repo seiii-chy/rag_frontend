@@ -11,17 +11,18 @@ const toggleFilter = () => {
 }
 
 const knowledgePoints = ref([
-  { title: 'Java 基础', desc: '面向对象、异常处理等', id: 1 },
-  { title: '并发编程', desc: '线程、锁、并发工具类', id: 2 },
-  { title: 'Spring 框架', desc: 'IOC、AOP、事务管理', id: 3 },
-  { title: '数据库优化', desc: '索引、SQL调优、事务隔离级别', id: 4 },
-  { title: '操作系统', desc: '内存管理、进程线程、IO模型', id: 5 },
-  { title: '网络协议', desc: 'TCP/IP、HTTP、WebSocket', id: 6 },
+  { title: 'Java 基础', desc: '面向对象、异常处理等', id: 1, progress: 70 },
+  { title: '并发编程', desc: '线程、锁、并发工具类', id: 2, progress: 50 },
+  { title: 'Spring 框架', desc: 'IOC、AOP、事务管理', id: 3, progress: 30 },
+  { title: '数据库优化', desc: '索引、SQL调优、事务隔离级别', id: 4, progress: 60 },
+  { title: '操作系统', desc: '内存管理、进程线程、IO模型', id: 5, progress: 20 },
+  { title: '网络协议', desc: 'TCP/IP、HTTP、WebSocket', id: 6, progress: 10 },
 ])
 
 const goToCourse = (id) => {
-  router.push(`/course/${id}`)
+  router.push({ path: '/courseDetail', query: { id } })
 }
+
 </script>
 
 <template>
@@ -75,6 +76,13 @@ const goToCourse = (id) => {
           <h3>{{ item.title }}</h3>
         </template>
         <p>{{ item.desc }}</p>
+        <el-progress
+            :percentage="item.progress"
+            :stroke-width="8"
+            :show-text="true"
+            :format="(percentage) => `${percentage}%`"
+            style="margin-top: 10px"
+        />
       </el-card>
     </div>
   </div>
@@ -111,7 +119,7 @@ const goToCourse = (id) => {
 .knowledge-card {
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
-  min-height: 160px;
+  min-height: 180px;
   font-size: 16px;
   padding: 20px;
 }
