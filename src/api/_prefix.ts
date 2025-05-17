@@ -2,4 +2,6 @@
 export const API_MODULE = '/api'
 
 //用户模块
-export const USER_MODULE = `${API_MODULE}/users`
+export const USER_MODULE = `/auth`
+
+export const KNOWLEDGE_MODULE = '/upload'

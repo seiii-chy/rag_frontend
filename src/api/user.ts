@@ -1,4 +1,5 @@
 import {axios} from '../utils/request'
+import {USER_MODULE} from "./_prefix.ts";
 
 type LoginInfo = {
     username: string,   // 改成 username
@@ -13,14 +14,14 @@ type RegisterInfo = {
 }
 
 export const userLogin = (loginInfo: LoginInfo) => {
-    return axios.post(`/login`, null, {params: loginInfo})
+    return axios.post(`${USER_MODULE}/login`, null, {params: loginInfo})
         .then(res => {
             return res
         })
 }
 
 export const userRegister = (registerInfo: RegisterInfo) => {
-    return axios.post(`/register`, registerInfo,
+    return axios.post(`${USER_MODULE}/register`, registerInfo,
         {headers: {'Content-Type': 'application/json'}})
         .then(res => {
             return res
