@@ -47,6 +47,8 @@
           </el-input>
         </div>
 
+        <el-button type="primary" @click="router.push('/knowledgeBase');">管理知识库</el-button>
+
         <!-- 用户操作按钮 -->
         <el-tooltip content="个人中心" placement="bottom">
           <router-link to="/dashboard" class="action-btn">

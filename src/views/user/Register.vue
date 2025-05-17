@@ -69,8 +69,8 @@ function handleRegister() {
           <el-form-item>
             <label for="userType">身份</label>
             <el-select id="userType" v-model="userType" placeholder="请选择身份" style="width: 100%;">
-              <el-option value="CUSTOMER" label="普通用户"/>
-              <el-option value="STAFF" label="员工"/>
+              <el-option value="normal" label="用户"/>
+              <el-option value="root" label="管理员"/>
             </el-select>
           </el-form-item>
 

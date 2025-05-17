@@ -7,8 +7,8 @@ type LoginInfo = {
 
 type RegisterInfo = {
     username: string,
-    email: string,
     password: string,
+    email: string,
     user_type: string,
 }
 

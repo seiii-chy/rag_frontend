@@ -53,6 +53,12 @@ const router = createRouter({
                 name: 'CourseDetail',
                 component: () => import('../views/Study/CourseDetail.vue'),
                 meta: {title: '课程信息'}
+            },
+            {
+                path: '/knowledgeBase',
+                name: 'KnowledgeBase',
+                component: () => import('../views/KnowledgeBase/KnowledgeBase.vue'),
+                meta: {title: '管理知识库'}
             }
         ]
     }, {

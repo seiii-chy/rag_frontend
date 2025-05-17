@@ -7,6 +7,6 @@ import 'element-plus/dist/index.css'
 import './style.css'
 
 axios.defaults.baseURL = ("http://172.29.4.151:5000")
-axios.defaults.timeout = 150000;
+axios.defaults.timeout = 60000;
 
 createApp(App).use(ElementPlus).use(router).mount('#app')
