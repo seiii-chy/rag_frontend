@@ -2,7 +2,7 @@ import {axios} from '../utils/request'
 import {USER_MODULE} from "./_prefix.ts";
 
 type LoginInfo = {
-    username: string,   // 改成 username
+    username: string,
     password: string
 }
 
@@ -14,7 +14,7 @@ type RegisterInfo = {
 }
 
 export const userLogin = (loginInfo: LoginInfo) => {
-    return axios.post(`${USER_MODULE}/login`, null, {params: loginInfo})
+    return axios.post(`${USER_MODULE}/login`, loginInfo, {headers: {'Content-Type': 'application/json'}})
         .then(res => {
             return res
         })
