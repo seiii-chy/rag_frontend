@@ -20,7 +20,7 @@ function handleLogin() {
     username: username.value,
     password: password.value
   }).then(res => {
-    if (res.data.code === '000') {
+    if (res.status === 200) {
       ElMessage({
         message: "登录成功！",
         type: 'success',
