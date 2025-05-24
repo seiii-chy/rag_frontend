@@ -4,6 +4,10 @@ import { ElMessage } from 'element-plus'
 import { UploadFilled, Document } from '@element-plus/icons-vue'
 import { fetchKnowledgeFiles, uploadKnowledgeFile } from '../../api/knowledge.ts'
 import type { AxiosError } from 'axios'
+import {useRouter} from "vue-router";
+import {getDocumentUrl} from "../../api/search.ts";
+
+const router = useRouter()
 
 const fileList = ref<{ name: string }[]>([])
 const uploading = ref(false)
@@ -73,6 +77,17 @@ function getFileColor(name: string): string {
   return '#909399'
 }
 
+async function previewFile(name: string) {
+  if (name.endsWith('.pdf')) {
+    const pdfUrl = await getDocumentUrl(name);
+    await router.push({
+      path: '/pdfViewer',
+      query: {url: encodeURIComponent(pdfUrl)}
+    })
+  } else if (name.endsWith('.md')) {
+    // TODO
+  }
+}
 
 onMounted(() => {
   loadFiles()
@@ -129,7 +144,7 @@ onMounted(() => {
                   :key="item.name"
                   :index="item.name"
               >
-                <el-icon :size="36" class="file-icon" :style="{ color: getFileColor(item.name) }">
+                <el-icon :size="36" class="file-icon" :style="{ color: getFileColor(item.name) }" @click="previewFile(item.name)">
                   <Document />
                 </el-icon>
                 <span>{{ item.name }}</span>
