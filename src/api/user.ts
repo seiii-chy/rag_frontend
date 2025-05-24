@@ -29,9 +29,11 @@ export const userRegister = (registerInfo: RegisterInfo) => {
 }
 
 export const userInfo = () => {
-    return axios.get(`/user_info`, {
+    return axios.get(`${USER_MODULE}/info`, {
         headers: {
-            'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+            'Authorization': sessionStorage.getItem('token') || ''
         }
+    }).then(res => {
+        return res
     })
 }

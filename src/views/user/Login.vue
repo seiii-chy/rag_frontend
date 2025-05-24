@@ -26,19 +26,20 @@ function handleLogin() {
         type: 'success',
         center: true,
       })
-      const token = res.data.result
+      const token = res.data.token
       sessionStorage.setItem('token', token)
 
       userInfo().then(res => {
-        sessionStorage.setItem('name', res.data.result.name)
-        sessionStorage.setItem('role', res.data.result.role)
-        const user = res.data.result
+        console.log(res)
+        sessionStorage.setItem('name', res.data.user_name)
+        sessionStorage.setItem('role', res.data.user_type)
+        const user = res.data
         sessionStorage.setItem('user', JSON.stringify(user))
         router.push({path: "/dashboard"})
       })
     } else {
       ElMessage({
-        message: res.data.msg,
+        message: "登陆失败！",
         type: 'error',
         center: true,
       })

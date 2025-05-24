@@ -32,6 +32,7 @@ function handleRegister() {
     email: email.value,
     user_type: userType.value,
   }).then(res => {
+    console.log(res)
     if (res.status === 200) {
       ElMessage({
         message: "注册成功！请登录账号",
@@ -69,8 +70,8 @@ function handleRegister() {
           <el-form-item>
             <label for="userType">身份</label>
             <el-select id="userType" v-model="userType" placeholder="请选择身份" style="width: 100%;">
-              <el-option value="normal" label="用户"/>
-              <el-option value="root" label="管理员"/>
+              <el-option value="normal" label="普通用户"/>
+<!--              <el-option value="root" label="管理员"/>-->
             </el-select>
           </el-form-item>
 

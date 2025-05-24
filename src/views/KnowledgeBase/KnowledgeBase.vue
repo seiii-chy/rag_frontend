@@ -34,7 +34,7 @@ const uploadFile = async (options: any) => {
     uploading.value = true
     await uploadKnowledgeFile(file)
     ElMessage.success('上传成功')
-    loadFiles()
+    await loadFiles()
   } catch (err) {
     const error = err as AxiosError
     const errorMsg = (error.response?.data as any)?.error || '上传失败'

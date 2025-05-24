@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import {ref, computed, onMounted} from 'vue'
 import { UserFilled } from "@element-plus/icons-vue"
 
-const role = sessionStorage.getItem("role")
+const role = sessionStorage.getItem("role") || ""
 const name = ref('')
 const email = ref('')
 const regTime = ref()
@@ -26,6 +26,27 @@ function updateInfo(){
 
 }
 
+function getRoleText(role: string){
+  if(role === 'root'){
+    return "管理员"
+  }else if(role === 'normal'){
+    return "普通用户"
+  }else if(role === 'vip'){
+    return ""
+  }
+}
+
+onMounted(() => {
+  const user = JSON.parse(sessionStorage.getItem('user') || "{}")
+  email.value = user.email || ""
+  name.value = user.user_name || ""
+  if (user.create_time) {
+    regTime.value = new Date(user.create_time).toLocaleDateString()
+  } else {
+    regTime.value = ""
+  }
+})
+
 </script>
 
 <template>
@@ -47,7 +68,7 @@ function updateInfo(){
         </template>
 
         <el-descriptions-item label="身份">
-          <el-tag>{{ role }}</el-tag>
+          <el-tag>{{ getRoleText(role) }}</el-tag>
         </el-descriptions-item>
 
         <el-descriptions-item label="邮箱">

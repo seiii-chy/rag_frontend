@@ -47,7 +47,7 @@
           </el-input>
         </div>
 
-        <el-button type="primary" @click="router.push('/knowledgeBase');">管理知识库</el-button>
+        <el-button type="primary" @click="router.push('/knowledgeBase');" v-if="isAdmin">管理知识库</el-button>
 
         <!-- 用户操作按钮 -->
         <el-tooltip content="个人中心" placement="bottom">
@@ -81,6 +81,8 @@ import { ElMessageBox } from "element-plus";
 const router = useRouter();
 const activeIndex = ref<string>(router.currentRoute.value.path);
 const searchQuery = ref<string>("");
+
+const isAdmin = sessionStorage.getItem('role') === 'root'
 
 /**
  * 处理菜单选择
