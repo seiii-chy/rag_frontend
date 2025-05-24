@@ -7,17 +7,34 @@ import type { AxiosError } from 'axios'
 
 const fileList = ref<{ name: string }[]>([])
 const uploading = ref(false)
-
-const pageSize = 5
+const searchText = ref('')
 const currentPage = ref(1)
+const pageSize = 5
+const activeFile = ref('')
+const selectedFile = ref('')
+
+const filteredFiles = computed(() =>
+    fileList.value.filter(file =>
+        file.name.toLowerCase().includes(searchText.value.toLowerCase())
+    )
+)
 
 const paginatedFiles = computed(() => {
   const start = (currentPage.value - 1) * pageSize
-  return fileList.value.slice(start, start + pageSize)
+  return filteredFiles.value.slice(start, start + pageSize)
 })
 
-const handlePageChange = (page: number) => {
+function handlePageChange(page: number) {
   currentPage.value = page
+}
+
+function handleFileSelect(fileName: string) {
+  activeFile.value = fileName
+  selectedFile.value = fileName
+}
+
+function handleDelete(){
+
 }
 
 const loadFiles = async () => {
@@ -28,14 +45,20 @@ const loadFiles = async () => {
   }
 }
 
-const uploadFile = async (options: any) => {
+const uploadFile = async (options: any): Promise<void> => {
   const { file } = options
   try {
     uploading.value = true
-    await uploadKnowledgeFile(file)
-    ElMessage.success('上传成功')
-    await loadFiles()
+    const res = await uploadKnowledgeFile(file)
+    console.log(res)
+    if (res.status === 200 && res.data.success) {
+      ElMessage.success(`上传成功：${res.data.saved_files.join(', ')}`)
+      await loadFiles()
+    } else {
+      ElMessage.error(res.data?.error || '上传失败')
+    }
   } catch (err) {
+    console.log(123)
     const error = err as AxiosError
     const errorMsg = (error.response?.data as any)?.error || '上传失败'
     ElMessage.error(errorMsg)
@@ -44,6 +67,13 @@ const uploadFile = async (options: any) => {
   }
 }
 
+function getFileColor(name: string): string {
+  if (name.endsWith('.pdf')) return '#f56c6c'
+  if (name.endsWith('.md')) return '#409EFF'
+  return '#909399'
+}
+
+
 onMounted(() => {
   loadFiles()
 })
@@ -51,12 +81,11 @@ onMounted(() => {
 
 <template>
   <el-main class="container">
-    <div class="title_box">
-      <p>知识库管理</p>
-    </div>
-    <div class="outer_border">
-      <!-- 左侧：上传文件 -->
+    <div class="title_box"><p>知识库管理</p></div>
+    <div class="outer_border horizontal-layout">
+      <!-- 左侧栏 -->
       <div class="left_div">
+        <!-- 上传 -->
         <p class="upload_title">上传文档（支持 .pdf / .md）</p>
         <el-form class="upload_box">
           <el-form-item>
@@ -67,57 +96,82 @@ onMounted(() => {
                 :show-file-list="false"
                 accept=".pdf,.md"
             >
-              <div class="el-upload__text">
-                拖拽或点击上传文件
-              </div>
-              <el-icon class="el-icon--upload">
-                <UploadFilled />
-              </el-icon>
+              <div class="el-upload__text">拖拽或点击上传文件</div>
+              <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
             </el-upload>
           </el-form-item>
         </el-form>
-      </div>
 
-      <!-- 中间分割线 -->
-      <div class="divider"></div>
-
-      <!-- 右侧：文件列表 -->
-      <div class="right_div">
-        <el-card class="file_list_card" shadow="hover">
-          <template #header>
-            <span class="text-lg font-semibold">已有文件</span>
-          </template>
-
-          <el-empty v-if="paginatedFiles.length === 0" description="暂无文件" />
-
-          <div v-else class="file-list-wrapper">
-            <div
-                v-for="(item, index) in paginatedFiles"
-                :key="index"
-                class="file-item"
-            >
-              <el-icon><Document /></el-icon>
-              <span class="file-name">{{ item.name }}</span>
-            </div>
+        <!-- 已上传文档 -->
+        <el-card class="uploaded-list" shadow="never">
+          <template #header><b>📁 已上传文档</b></template>
+          <div style="display: flex; align-items: center;">
+            <el-text style="margin-right: 8px; white-space: nowrap;">搜索文件名：</el-text>
+            <el-input
+                v-model="searchText"
+                placeholder="搜索文件名"
+                size="default"
+                clearable
+                prefix-icon="Search"
+                class="search-input"
+            />
           </div>
 
-          <!-- 分页 -->
-          <div class="pagination-wrapper">
+          <div v-if="filteredFiles.length === 0" class="no-files">暂无文件</div>
+          <el-scrollbar class="file-scroll">
+            <el-menu
+                :default-active="activeFile"
+                class="file-list"
+                @select="handleFileSelect"
+            >
+              <el-menu-item
+                  v-for="item in paginatedFiles"
+                  :key="item.name"
+                  :index="item.name"
+              >
+                <el-icon :size="36" class="file-icon" :style="{ color: getFileColor(item.name) }">
+                  <Document />
+                </el-icon>
+                <span>{{ item.name }}</span>
+              </el-menu-item>
+            </el-menu>
+          </el-scrollbar>
+          <div style="display: flex; justify-content: center; width: 100%;">
             <el-pagination
                 background
                 layout="prev, pager, next"
-                :total="fileList.length"
+                :total="filteredFiles.length"
                 :page-size="pageSize"
                 :current-page="currentPage"
                 @current-change="handlePageChange"
                 small
             />
           </div>
+
         </el-card>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- 右侧详情 -->
+      <div class="right_div">
+        <el-card v-if="selectedFile" class="preview-card">
+          <template #header><b>📄 文档详情</b></template>
+          <p><b>文件名：</b>{{ selectedFile }}</p>
+          <p><b>全名：</b>{{ selectedFile }}</p>
+          <el-button
+              type="danger"
+              icon="Delete"
+              @click="handleDelete"
+              size="small"
+          >删除文档</el-button>
+        </el-card>
+        <el-empty v-else description="请选择左侧文档查看详情" />
       </div>
     </div>
   </el-main>
 </template>
+
 
 <style scoped>
 .container {
@@ -162,30 +216,43 @@ onMounted(() => {
   padding: 10px;
   border-radius: 6px;
 }
-.file_list_card {
-  background-color: #fff;
-  border-radius: 6px;
+
+.file-icon {
+  margin-bottom: 8px;
 }
-.file-list-wrapper {
-  padding: 10px 0;
+
+.horizontal-layout {
+  display: flex;
+  gap: 16px;
+}
+
+.uploaded-list {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
-.file-item {
-  display: flex;
-  align-items: center;
+
+.file-scroll {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 10px;
 }
-.file-item .el-icon {
-  margin-right: 8px;
+
+.search-input {
+  margin-bottom: 8px;
+  background: white;
+  border: 1px solid #dcdfe6; /* Element Plus 默认边框色 */
+  border-radius: 4px;
+  color: #000; /* 黑色文字 */
+  padding: 4px 11px; /* 增加内边距，提升可读性 */
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.05);
 }
-.file-name {
-  font-size: 14px;
+
+.search-input ::v-deep(.el-input__inner) {
+  color: #000;
+  background: white;
+  padding: 4px 11px;
 }
-.pagination-wrapper {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-}
+
 
 </style>

@@ -27,7 +27,7 @@ function updateInfo(){
 }
 
 function getRoleText(role: string){
-  if(role === 'root'){
+  if(role === 'Administrator'){
     return "管理员"
   }else if(role === 'normal'){
     return "普通用户"

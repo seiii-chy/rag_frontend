@@ -82,7 +82,7 @@ const router = useRouter();
 const activeIndex = ref<string>(router.currentRoute.value.path);
 const searchQuery = ref<string>("");
 
-const isAdmin = sessionStorage.getItem('role') === 'root'
+const isAdmin = sessionStorage.getItem('role') === 'Administrator'
 
 /**
  * 处理菜单选择

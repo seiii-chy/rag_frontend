@@ -24,7 +24,6 @@ function handleLogin() {
       ElMessage({
         message: "登录成功！",
         type: 'success',
-        center: true,
       })
       const token = res.data.token
       sessionStorage.setItem('token', token)
@@ -41,7 +40,6 @@ function handleLogin() {
       ElMessage({
         message: "登陆失败！",
         type: 'error',
-        center: true,
       })
       password.value = ''
     }

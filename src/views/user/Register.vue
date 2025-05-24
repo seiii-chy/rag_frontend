@@ -37,14 +37,12 @@ function handleRegister() {
       ElMessage({
         message: "注册成功！请登录账号",
         type: 'success',
-        center: true,
       })
       router.push({path: "/login"})
     } else {
       ElMessage({
         message: res.data.msg,
         type: 'error',
-        center: true,
       })
     }
   })

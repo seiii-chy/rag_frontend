@@ -3,17 +3,23 @@ import {axios} from '../utils/request'
 import {KNOWLEDGE_MODULE} from "./_prefix.ts";
 
 export const fetchKnowledgeFiles = () => {
-    return axios.get(`${KNOWLEDGE_MODULE}/files`)
+    return axios.get(`${KNOWLEDGE_MODULE}/list_files`, {
+        headers: {
+            'Authorization': sessionStorage.getItem('token') || ''
+        }
+    })
         .then(res => res.data.files)
 }
 
 export const uploadKnowledgeFile = (file: any) => {
     const formData = new FormData()
-    formData.append('file', file.raw)
+    formData.append('files', file, file.name)
 
-    return axios.post(`${KNOWLEDGE_MODULE}/file`, formData, {
+    return axios.post(`${KNOWLEDGE_MODULE}/upload_file`, formData, {
         headers: {
-            'Content-Type': 'multipart/form-data'
+            'Authorization': sessionStorage.getItem('token') || ''
         }
+    }).then(res => {
+        return res
     })
 }
