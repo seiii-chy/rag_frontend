@@ -7,7 +7,8 @@ const Form = ref({
   title: '',
   position: '',
   model: 'hunyuan',
-  techStack: ['Java']
+  techStack: ['Java'],
+  resumeText: ''
 })
 
 const startInterview = (form:any) => {
@@ -48,7 +49,8 @@ const resetForm = (form: any) => {
     title: '',
     position: '',
     model: 'hunyuan',
-    techStack: ['Java']
+    techStack: ['Java'],
+    resumeText: ''
   }
   console.log('表单已重置');
 };
@@ -215,6 +217,139 @@ onUnmounted(() => {
 });
 
 
+// import pdfjsLib from 'pdfjs-dist/build/pdf';
+//import { readDocxFile } from 'docx4js';
+
+
+
+const fileList = ref<any[]>([]);
+
+const handleFileChange = (file:any) => {
+  //console.log('上传的文件:', file);
+  fileList.value = [file];
+  console.log('文件列表:', fileList.value);
+  parseResume(file);
+};
+
+const handleExceed = () => {
+  //console.warn('文件数量超过限制');
+  ElMessage.warning('只能上传一个文件');
+};
+
+const parseResume = async (file:any) => {
+  //console.log('解析简历文件:', file);
+  const fileName = file.name.toLowerCase();
+  
+  if (fileName.endsWith('.pdf')) {
+    await parsePDF(file.raw);
+  } else if (fileName.endsWith('.docx')) {
+    // console.log('开始解析 DOCX 文件:' ,file);
+    await parseDOCX(file.raw);
+  } else {
+    ElMessage.error('只支持 PDF 和 DOCX 文件');
+  }
+};
+// // 上传pdf
+// const handleFile = (event) => {
+//   const file = event.target.files[0];
+//   if (file) {
+//     const reader = new FileReader();
+//     reader.onload = (e) => {
+//       const data = new Uint8Array(e.target.result);
+//       extractTextFromPDF(data);
+//     };
+ 
+//     reader.readAsArrayBuffer(file);
+//   }
+// };
+
+const parsePDF = async (file:any) => {
+  try {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const pdfData = new Uint8Array(e.target?.result as ArrayBuffer);
+      extractTextFromPDF(pdfData);
+    }
+      // const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+      // const pdf = await loadingTask.promise;
+      
+      // let text = '';
+      // for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      //   const page = await pdf.getPage(pageNum);
+      //   const textContent = await page.getTextContent();
+      //   const pageText = textContent.items.map((item) => item.str).join(' ');
+      //   text += pageText + '\n';
+      // }
+      // 
+    //   Form.value.resumeText = text;
+    //   ElMessage.success('PDF 简历解析成功');
+    // };
+    reader.readAsArrayBuffer(file);
+  } catch (error) {
+    ElMessage.error('解析 PDF 文件时出错');
+    console.error(error);
+  }
+};
+import PizZip, { LoadData } from "pizzip";
+import Docxtemplater from "docxtemplater";
+const parseDOCX = async (file:any) => {
+  //console.log('解析 DOCX 文件:', file);
+  try {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const docxData = e.target?.result as LoadData;
+      console.log('docxData:', docxData);
+      const zip = new PizZip(docxData);
+      const doc = new Docxtemplater(zip);
+      try {
+        doc.render();
+        const content = doc.getFullText();
+        console.log('docx content:', content);
+        Form.value.resumeText = content;
+      } catch (error) {
+        console.error('Error rendering docx:', error);
+      }
+      ElMessage.success('DOCX 简历解析成功');
+    };
+    reader.readAsArrayBuffer(file);
+  } catch (error) {
+    ElMessage.error('解析 DOCX 文件时出错');
+    console.error(error);
+  }
+};
+
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf'
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/legacy/build/pdf.worker.js',
+    import.meta.url
+).toString()
+//读取pdf文件里的文字
+const extractTextFromPDF = async (data:any) => {
+  // PDFJS.getDocument(data)
+  const pdf = await pdfjsLib.getDocument(data).promise;
+  const textContent = [];
+  const promises = [];
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+    promises.push(
+      pdf.getPage(pageNumber).then((page: any) => {
+        return page.getTextContent().then((content: any) => {
+          let pageText = "";
+          content.items.forEach((item: any) => {
+            pageText += item.str + " ";
+          });
+          return pageText.trim();
+        });
+      })
+    );
+  }
+
+  const pagesText = await Promise.all(promises);
+  textContent.push(...pagesText);
+  Form.value.resumeText = textContent.join("\n");
+  console.log('PDF 简历解析成功:', Form.value.resumeText);
+
+};
 </script>
 
 <template>
@@ -234,6 +369,29 @@ onUnmounted(() => {
         </div>
       </el-aside>
     </el-container> -->
+    <el-container class="exam-main" v-if="status === 'start'">
+      <div class="welcome-panel">
+        <h2>模拟面试工具</h2>
+        <p class="welcome-description">新建一个的模拟面试或查看面试历史</p>
+        <div class="welcome-actions">
+          <el-button 
+            type="primary" 
+            class="new-interview-btn"
+            @click="status = 'creating'">
+            <el-icon><Plus /></el-icon>
+            新建模拟面试
+          </el-button>
+          <el-button 
+            type="info" 
+            class="history-btn"
+            @click="status = 'history'">
+            <el-icon><Document /></el-icon>
+            面试历史
+          </el-button>
+        </div>
+      </div>
+    </el-container>
+
     <el-container class="exam-main" v-if="status === 'creating'">
       <div class="interview-setup-panel">
         <div class="setup-header">
@@ -280,6 +438,25 @@ onUnmounted(() => {
             </el-checkbox-group>
           </el-form-item>
 
+          <!-- 添加提交简历部分 -->
+          <el-form-item label="提交简历：" >
+            <el-upload
+              class="upload-demo"
+              drag
+              :action="''"
+              :auto-upload="false"
+              :on-change="handleFileChange"
+              :file-list="fileList"
+              accept=".pdf,.docx"
+              :limit="1"
+              :on-exceed="handleExceed"
+              >
+              <i class="el-icon-upload"></i>
+              <div class="el-upload__text">点击或拖拽文件到此处上传</div>
+              <div class="el-upload__tip" slot="tip">只支持单个 PDF 或 DOCX 文件</div>
+            </el-upload>
+          </el-form-item>
+
           <el-form-item>
             <div class="form-actions">
               <el-button @click="resetForm('interviewForm')">重置</el-button>
@@ -289,6 +466,7 @@ onUnmounted(() => {
         </el-form>
       </div>
     </el-container>
+    
     <el-container class="exam-main" v-if="status === 'history'">
       <div class="history-panel">
         <h3>面试历史</h3>
@@ -303,28 +481,7 @@ onUnmounted(() => {
         </div>
       </div>
     </el-container>
-    <el-container class="exam-main" v-if="status === 'start'">
-      <div class="welcome-panel">
-        <h2>模拟面试工具</h2>
-        <p class="welcome-description">新建一个的模拟面试或查看面试历史</p>
-        <div class="welcome-actions">
-          <el-button 
-            type="primary" 
-            class="new-interview-btn"
-            @click="status = 'creating'">
-            <el-icon><Plus /></el-icon>
-            新建模拟面试
-          </el-button>
-          <el-button 
-            type="info" 
-            class="history-btn"
-            @click="status = 'history'">
-            <el-icon><Document /></el-icon>
-            面试历史
-          </el-button>
-        </div>
-      </div>
-    </el-container>
+    
     <el-container class="exam-main" v-if="status === 'Examing'">
       <!-- <div class="chat-messages">
         <div
