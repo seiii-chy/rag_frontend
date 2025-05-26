@@ -37,6 +37,12 @@ const router = createRouter({
                 meta: {title: '文献查看'}
             },
             {
+                path: '/mdViewer',
+                name: 'MarkdownViewer',
+                component: () => import('../views/HomePage/MdViewer.vue'),
+                meta: {title: '文献查看'}
+            },
+            {
                 path: '/exam',
                 name: 'Exam',
                 component: () => import('../views/Exam/Exam.vue'),

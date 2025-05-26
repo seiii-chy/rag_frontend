@@ -1,11 +1,3 @@
-<template>
-  <el-button type="primary" @click="router.back()" class="returnButton">返回</el-button>
-  <div style="padding: 20px; position: relative; height: 85vh;">
-    <h2>文献预览</h2>
-    <div ref="containerRef" class="pdfViewerContainer"></div>
-  </div>
-</template>
-
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
@@ -48,6 +40,14 @@ onMounted(async () => {
   }
 })
 </script>
+
+<template>
+  <el-button type="primary" @click="router.back()" class="returnButton">返回</el-button>
+  <div style="padding: 20px; position: relative; height: 85vh;">
+    <h2>文献预览</h2>
+    <div ref="containerRef" class="pdfViewerContainer"></div>
+  </div>
+</template>
 
 <style scoped>
 .returnButton{

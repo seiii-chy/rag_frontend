@@ -14,13 +14,15 @@
     "axios": "^1.6.2",
     "dompurify": "^3.2.6",
     "element-plus": "^2.5.3",
+    "markdown-it": "^14.1.0",
     "marked": "^15.0.12",
     "pdfjs-dist": "^3.11.174",
     "rag-frontend": "file:",
     "sass": "^1.86.3",
     "uuid": "^11.1.0",
     "vue": "^3.3.8",
-    "vue-router": "^4.2.5"
+    "vue-router": "^4.2.5",
+    "vue3-markdown-it": "^1.0.10"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.5.0",
