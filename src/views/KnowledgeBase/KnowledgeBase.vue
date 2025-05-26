@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { UploadFilled, Document } from '@element-plus/icons-vue'
+import {UploadFilled, Document, Close} from '@element-plus/icons-vue'
 import { fetchKnowledgeFiles, uploadKnowledgeFile } from '../../api/knowledge.ts'
 import type { AxiosError } from 'axios'
 import {useRouter} from "vue-router";
@@ -14,8 +14,7 @@ const uploading = ref(false)
 const searchText = ref('')
 const currentPage = ref(1)
 const pageSize = 5
-const activeFile = ref('')
-const selectedFile = ref('')
+const selectedFiles = ref<string[]>([])
 
 const filteredFiles = computed(() =>
     fileList.value.filter(file =>
@@ -33,12 +32,21 @@ function handlePageChange(page: number) {
 }
 
 function handleFileSelect(fileName: string) {
-  activeFile.value = fileName
-  selectedFile.value = fileName
+  // 移除已存在的再插入到最前面（置顶）
+  selectedFiles.value = [
+    fileName,
+    ...selectedFiles.value.filter(f => f !== fileName)
+  ]
 }
 
-function handleDelete(){
+function handleClose(fileName: string) {
+  selectedFiles.value = selectedFiles.value.filter(f => f !== fileName)
+}
 
+function handleDelete(name: string) {
+  // 先从已选中中移除
+  selectedFiles.value = selectedFiles.value.filter(f => f !== name)
+  // TODO: 调用后端接口删除
 }
 
 const loadFiles = async () => {
@@ -85,7 +93,11 @@ async function previewFile(name: string) {
       query: {url: encodeURIComponent(pdfUrl)}
     })
   } else if (name.endsWith('.md')) {
-    // TODO
+    const mdUrl = await getDocumentUrl(name);
+    await router.push({
+      path: '/mdViewer',
+      query: {url: encodeURIComponent(mdUrl)}
+    })
   }
 }
 
@@ -135,7 +147,6 @@ onMounted(() => {
           <div v-if="filteredFiles.length === 0" class="no-files">暂无文件</div>
           <el-scrollbar class="file-scroll">
             <el-menu
-                :default-active="activeFile"
                 class="file-list"
                 @select="handleFileSelect"
             >
@@ -170,18 +181,31 @@ onMounted(() => {
 
       <!-- 右侧详情 -->
       <div class="right_div">
-        <el-card v-if="selectedFile" class="preview-card">
-          <template #header><b>📄 文档详情</b></template>
-          <p><b>文件名：</b>{{ selectedFile }}</p>
-          <p><b>全名：</b>{{ selectedFile }}</p>
-          <el-button
-              type="danger"
-              icon="Delete"
-              @click="handleDelete"
-              size="small"
-          >删除文档</el-button>
+        <el-card
+            v-for="file in selectedFiles"
+            :key="file"
+            class="preview-card"
+            style="margin-bottom: 16px; position: relative;"
+        >
+          <template #header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span><b>📄 文档详情</b></span>
+              <el-button type="danger" @click="handleClose(file)">
+                <el-icon><Close /></el-icon>
+              </el-button>
+            </div>
+          </template>
+          <p style="font-size: large"><b>文件名：</b>{{ file.split('.')[0] }}</p>
+          <p style="font-size: large"><b>文件类型：</b>{{ file.split('.')[1] }}</p>
+          <el-button type="danger" @click="handleDelete(file)" style="margin-top: 20px">
+            删除文档
+          </el-button>
+          <el-button type="success" @click="previewFile(file)" style="margin-top: 20px">
+            查看文档
+          </el-button>
         </el-card>
-        <el-empty v-else description="请选择左侧文档查看详情" />
+
+        <el-empty v-if="selectedFiles.length === 0" description="请选择左侧文档查看详情" />
       </div>
     </div>
   </el-main>
@@ -220,6 +244,7 @@ onMounted(() => {
 .right_div {
   width: 65%;
   height: 78vh;
+  overflow-y: auto;
 }
 .upload_title {
   font-size: 16px;
@@ -269,5 +294,11 @@ onMounted(() => {
   padding: 4px 11px;
 }
 
+.preview-card {
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 16px;
+  background-color: #fdfdfd;
+}
 
 </style>
