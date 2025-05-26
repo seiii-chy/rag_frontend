@@ -1,11 +1,8 @@
 <script setup lang="ts">
-import { ref, nextTick, reactive } from 'vue'
+import { ref} from 'vue'
 import { Microphone, Position, Plus,Document } from '@element-plus/icons-vue'
+import { renderMarkdown } from '../../utils/markdown';
 
-// const title = ref('')
-// const position = ref('')
-// const model = ref('hunyuan')
-// const techStack = ref(['Java'])
 const Form = ref({
   title: '',
   position: '',
@@ -14,7 +11,7 @@ const Form = ref({
 })
 
 const startInterview = (form:any) => {
-  
+  console.log("Form:",form)
   status.value = 'Examing';
   // form.value.validate((valid) => {
   //   if (valid) {
@@ -46,6 +43,7 @@ const rules = {
 
 
 const resetForm = (form: any) => {
+  console.log("Form:",form)
   Form.value = {
     title: '',
     position: '',
@@ -56,14 +54,14 @@ const resetForm = (form: any) => {
 };
 // 模拟数据
 const messages = ref([
-  { content: '请介绍一下Java的并发实现机制？', type: 'ai' },
+  { content: '请介绍一下Java的并发实现机制？', type: 'ai' , loading:false},
 ])
 const status = ref('start')
 // 模拟发送方法
 const sendMessage = async () => {
   if (ContentText.value.trim()) {
-    messages.value.push({ content: ContentText.value, type: 'user' })
-    let msg = ContentText.value
+    messages.value.push({ content: ContentText.value, type: 'user',loading:false})
+    //let msg = ContentText.value
     ContentText.value = ''
 
     // await nextTick(() => {
@@ -76,6 +74,7 @@ const sendMessage = async () => {
       messages.value.push({
         content: 'Java并发机制主要依赖于线程、synchronized、volatile、线程池、Lock等工具。',
         type: 'ai',
+        loading: false
       })
       // 添加用户反馈
     }, 500)
@@ -84,7 +83,7 @@ const sendMessage = async () => {
 
 // 语音录入
 import { v4 as uuidv4 } from 'uuid';
-import { onMounted, onUnmounted } from 'vue';
+import { onUnmounted } from 'vue';
 const appkey = ref('90AfgPopPQbBvM68');
 const token = ref('27cb85463b6e4616a01414fbc0553f76');
 const isRecording = ref(false);
@@ -153,7 +152,7 @@ async function startRecording() {
   connectWebSocket();
   try {
     audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    audioContext = new (window.AudioContext || window.webkitAudioContext)({
+    audioContext = new (window.AudioContext || window.AudioContext)({
       sampleRate: 16000
     });
     audioInput = audioContext.createMediaStreamSource(audioStream);
@@ -327,7 +326,7 @@ onUnmounted(() => {
       </div>
     </el-container>
     <el-container class="exam-main" v-if="status === 'Examing'">
-      <div class="chat-messages">
+      <!-- <div class="chat-messages">
         <div
           v-for="(message, index) in messages"
           :key="index"
@@ -337,8 +336,32 @@ onUnmounted(() => {
             {{ message.content }}
           </div>
         </div>
+      </div> -->
+      <!-- AI消息增加头像 -->
+      <div v-for="(msg, index) in messages" :key="index"
+      :class="['message-bubble', msg.type, { loading: msg.loading }]">
+        <!-- AI消息头像 -->
+        <div v-if="msg.type === 'ai'" class="ai-avatar">
+          <svg-icon icon-class="ai" />
+        </div>
+        <!-- 用户消息头像 -->
+        <div v-if="msg.type === 'user'" class="user-avatar">
+          <svg-icon icon-class="user" />
+        </div>
+        <div class="bubble-content">
+        <!-- 流式消息内容 -->
+          <div class="message-text">
+            <div v-if="msg.type === 'ai'" class="markdown-body" v-html="renderMarkdown(msg.content)"></div>
+            <template v-else>{{ msg.content }}</template>
+            <!-- 流式加载指示器 -->
+            <div v-if="msg.loading" class="stream-loader">
+              <div class="loader-dot"></div>
+              <div class="loader-dot"></div>
+              <div class="loader-dot"></div>
+            </div>
+          </div>
+        </div>
       </div>
-
       <div class="chat-footer">
         <div class="chat-input">
           <el-input
@@ -711,5 +734,100 @@ onUnmounted(() => {
 
 .form-input {
   width: 100%;
+}
+/* 聊天消息气泡 */
+.message-bubble {
+  max-width: 72%;
+  min-width: 240px;
+  margin: 12px 20px;
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  transition: all 0.3s ease;
+
+  &.user {
+    flex-direction: row-reverse;
+    margin-left: auto;
+
+    .bubble-content {
+      background: linear-gradient(135deg, #4CAF50, #43A047);
+      color: white;
+      border-radius: 18px 4px 18px 18px;
+    }
+  }
+
+  &.ai {
+    .bubble-content {
+      background: white;
+      color: #1a1a1a;
+      border-radius: 4px 18px 18px 18px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+  }
+}
+.bubble-content {
+  padding: 14px 18px;
+  position: relative;
+  line-height: 1.6;
+}
+
+.message-time {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 6px;
+  text-align: right;
+}
+
+.ai .message-time {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+/* 头像样式 */
+.ai-avatar,
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ai-avatar {
+  background: linear-gradient(45deg, #7f00ff, #e100ff);
+  color: white;
+}
+
+.user-avatar {
+  background: #4CAF50;
+  color: white;
+}
+.stream-loader {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+
+  .loader-dot {
+    width: 8px;
+    height: 8px;
+    background: #409EFF;
+    border-radius: 50%;
+    animation: pulse 1.4s infinite ease-in-out;
+
+    &:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+  }
+}
+
+@keyframes pulse {
+  0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+  30% { opacity: 1; transform: scale(1); }
 }
 </style>
