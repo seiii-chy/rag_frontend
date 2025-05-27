@@ -24,7 +24,7 @@
           <span>面试准备</span>
         </el-menu-item>
         
-        <el-menu-item index="/exam">
+        <el-menu-item index="/interview">
           <el-icon><ChatLineRound /></el-icon>
           <span>模拟面试</span>
         </el-menu-item>

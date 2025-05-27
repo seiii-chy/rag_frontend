@@ -43,9 +43,9 @@ const router = createRouter({
                 meta: {title: '文献查看'}
             },
             {
-                path: '/exam',
-                name: 'Exam',
-                component: () => import('../views/Exam/Exam.vue'),
+                path: '/interview',
+                name: 'Interview',
+                component: () => import('../views/Interview/interview.vue'),
                 meta: {title: '模拟面试'}
             },
             {

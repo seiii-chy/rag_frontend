@@ -32,6 +32,7 @@ function handleLogin() {
         console.log(res)
         sessionStorage.setItem('name', res.data.user_name)
         sessionStorage.setItem('role', res.data.user_type)
+        sessionStorage.setItem('userId', res.data.user_id)
         const user = res.data
         sessionStorage.setItem('user', JSON.stringify(user))
         router.push({path: "/dashboard"})

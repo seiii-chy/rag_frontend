@@ -2,6 +2,7 @@
 import { ref} from 'vue'
 import { Microphone, Position, Plus,Document } from '@element-plus/icons-vue'
 import { renderMarkdown } from '../../utils/markdown';
+import { startInterview, submitAnswer } from '../../api/interview';
 
 const Form = ref({
   title: '',
@@ -10,20 +11,37 @@ const Form = ref({
   techStack: ['Java'],
   resumeText: ''
 })
-
-const startInterview = (form:any) => {
-  console.log("Form:",form)
-  status.value = 'Examing';
-  // form.value.validate((valid) => {
-  //   if (valid) {
-  //     // 开始模拟面试的逻辑
-  //     console.log('模拟面试开始:', interviewForm);
-  //     
-  //   } else {
-  //     ElMessage.error('请填写所有必填字段');
-  //     return false;
-  //   }
-  // });
+const interviewForm = ref<HTMLElement | null>(null);
+const userId = ref(Number(sessionStorage.getItem('userId')) || 0)
+function startview(form:any){
+  form.validate((valid:any) => {
+    if (valid) {
+      startInterview({
+        interview_name: Form.value.title,
+        position: Form.value.position,
+        provider: Form.value.model,
+        cv: Form.value.resumeText,
+        user_id: userId.value
+      }).then(res => {
+        console.log('面试开始:', res);
+        if (res.status === 201) {
+          console.log('面试开始2:', res);
+          status.value = 'interviewing';
+        } else {
+          ElMessage({
+            message: res.data.msg,
+            type: 'error',
+          })
+        }
+      }).catch(error => {
+      ElMessage.error('面试开始失败，请稍后再试');
+        console.error('Error in startview:', error);
+    });
+    } else {
+      ElMessage.error('请填写所有必填字段');
+      return false;
+    }
+  });
 };
 
 const rules = {
@@ -52,34 +70,29 @@ const resetForm = (form: any) => {
     techStack: ['Java'],
     resumeText: ''
   }
-  console.log('表单已重置');
 };
 // 模拟数据
 const messages = ref([
   { content: '请介绍一下Java的并发实现机制？', type: 'ai' , loading:false},
 ])
 const status = ref('start')
+const interviewId = ref(0)
 // 模拟发送方法
 const sendMessage = async () => {
   if (ContentText.value.trim()) {
     messages.value.push({ content: ContentText.value, type: 'user',loading:false})
     //let msg = ContentText.value
     ContentText.value = ''
+    submitAnswer(interviewId.value,{
+      answer: ContentText.value,
+    }).then(res => {
+      console.log('回答提交成功:', res);
+      
+    }).catch(error => {
+      console.error('Error in sendMessage:', error);
+    });
 
-    // await nextTick(() => {
-    //   const container = document.querySelector('.chat-messages')
-    //   container.scrollTop = container.scrollHeight
-    // })
-
-    // 模拟 AI 回复
-    setTimeout(() => {
-      messages.value.push({
-        content: 'Java并发机制主要依赖于线程、synchronized、volatile、线程池、Lock等工具。',
-        type: 'ai',
-        loading: false
-      })
-      // 添加用户反馈
-    }, 500)
+    
   }
 }
 
@@ -131,7 +144,7 @@ function connectWebSocket() {
 
     const message = JSON.parse(event.data);
     if (message.header.name === "TranscriptionResultChanged") {
-      console.log(message.payload.result);
+      //console.log(message.payload.result);
       ContentText.value = latestText.value + message.payload.result;
     } 
     else if (message.header.name === "SentenceBegin") {
@@ -225,43 +238,25 @@ onUnmounted(() => {
 const fileList = ref<any[]>([]);
 
 const handleFileChange = (file:any) => {
-  //console.log('上传的文件:', file);
   fileList.value = [file];
-  console.log('文件列表:', fileList.value);
   parseResume(file);
 };
 
 const handleExceed = () => {
-  //console.warn('文件数量超过限制');
   ElMessage.warning('只能上传一个文件');
 };
 
 const parseResume = async (file:any) => {
-  //console.log('解析简历文件:', file);
   const fileName = file.name.toLowerCase();
   
   if (fileName.endsWith('.pdf')) {
     await parsePDF(file.raw);
   } else if (fileName.endsWith('.docx')) {
-    // console.log('开始解析 DOCX 文件:' ,file);
     await parseDOCX(file.raw);
   } else {
     ElMessage.error('只支持 PDF 和 DOCX 文件');
   }
 };
-// // 上传pdf
-// const handleFile = (event) => {
-//   const file = event.target.files[0];
-//   if (file) {
-//     const reader = new FileReader();
-//     reader.onload = (e) => {
-//       const data = new Uint8Array(e.target.result);
-//       extractTextFromPDF(data);
-//     };
- 
-//     reader.readAsArrayBuffer(file);
-//   }
-// };
 
 const parsePDF = async (file:any) => {
   try {
@@ -270,20 +265,6 @@ const parsePDF = async (file:any) => {
       const pdfData = new Uint8Array(e.target?.result as ArrayBuffer);
       extractTextFromPDF(pdfData);
     }
-      // const loadingTask = pdfjsLib.getDocument({ data: pdfData });
-      // const pdf = await loadingTask.promise;
-      
-      // let text = '';
-      // for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      //   const page = await pdf.getPage(pageNum);
-      //   const textContent = await page.getTextContent();
-      //   const pageText = textContent.items.map((item) => item.str).join(' ');
-      //   text += pageText + '\n';
-      // }
-      // 
-    //   Form.value.resumeText = text;
-    //   ElMessage.success('PDF 简历解析成功');
-    // };
     reader.readAsArrayBuffer(file);
   } catch (error) {
     ElMessage.error('解析 PDF 文件时出错');
@@ -293,18 +274,15 @@ const parsePDF = async (file:any) => {
 import PizZip, { LoadData } from "pizzip";
 import Docxtemplater from "docxtemplater";
 const parseDOCX = async (file:any) => {
-  //console.log('解析 DOCX 文件:', file);
   try {
     const reader = new FileReader();
     reader.onload = async (e) => {
       const docxData = e.target?.result as LoadData;
-      console.log('docxData:', docxData);
       const zip = new PizZip(docxData);
       const doc = new Docxtemplater(zip);
       try {
         doc.render();
         const content = doc.getFullText();
-        console.log('docx content:', content);
         Form.value.resumeText = content;
       } catch (error) {
         console.error('Error rendering docx:', error);
@@ -319,6 +297,7 @@ const parseDOCX = async (file:any) => {
 };
 
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf'
+
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/legacy/build/pdf.worker.js',
     import.meta.url
@@ -353,23 +332,8 @@ const extractTextFromPDF = async (data:any) => {
 </script>
 
 <template>
-   <el-container class="exam-container">
-    <!--<el-container class="exam-sidebar">
-      <el-aside width="100%" class="aside-panel">
-        <el-button type="primary" class="full-width">+ 新建面试</el-button>
-        <div class="classinterview-list">
-          <div class="interview-section">
-            <p>今天</p>
-            <el-button class="full-width" plain>Java面试模拟</el-button>
-          </div>
-          <div class="interview-section">
-            <p>三天前</p>
-            <el-button class="full-width" plain>项目介绍场景</el-button>
-          </div>
-        </div>
-      </el-aside>
-    </el-container> -->
-    <el-container class="exam-main" v-if="status === 'start'">
+   <el-container class="interview-container">
+    <el-container class="interview-main" v-if="status === 'start'">
       <div class="welcome-panel">
         <h2>模拟面试工具</h2>
         <p class="welcome-description">新建一个的模拟面试或查看面试历史</p>
@@ -392,7 +356,7 @@ const extractTextFromPDF = async (data:any) => {
       </div>
     </el-container>
 
-    <el-container class="exam-main" v-if="status === 'creating'">
+    <el-container class="interview-main" v-if="status === 'creating'">
       <div class="interview-setup-panel">
         <div class="setup-header">
           <h2>创建模拟面试</h2>
@@ -423,7 +387,7 @@ const extractTextFromPDF = async (data:any) => {
           <el-form-item label="选择模型:" prop="model">
             <el-radio-group v-model="Form.model">
               <el-radio label="混元" value="hunyuan"></el-radio>
-              <el-radio label="DeepseekV3" value="DeepseekV3"></el-radio>
+              <el-radio label="DeepseekV3" value="deepseek"></el-radio>
               <el-radio label="豆包" value="doubao"></el-radio>
             </el-radio-group>
           </el-form-item>
@@ -459,15 +423,15 @@ const extractTextFromPDF = async (data:any) => {
 
           <el-form-item>
             <div class="form-actions">
-              <el-button @click="resetForm('interviewForm')">重置</el-button>
-              <el-button type="primary" @click="startInterview('interviewForm')">开始面试</el-button>
+              <el-button @click="resetForm(interviewForm)">重置</el-button>
+              <el-button type="primary" @click="startview(interviewForm)">开始面试</el-button>
             </div>
           </el-form-item>
         </el-form>
       </div>
     </el-container>
     
-    <el-container class="exam-main" v-if="status === 'history'">
+    <el-container class="interview-main" v-if="status === 'history'">
       <div class="history-panel">
         <h3>面试历史</h3>
         <div class="history-list">
@@ -482,18 +446,7 @@ const extractTextFromPDF = async (data:any) => {
       </div>
     </el-container>
     
-    <el-container class="exam-main" v-if="status === 'Examing'">
-      <!-- <div class="chat-messages">
-        <div
-          v-for="(message, index) in messages"
-          :key="index"
-          :class="['message', message.type]"
-        >
-          <div class="message-content">
-            {{ message.content }}
-          </div>
-        </div>
-      </div> -->
+    <el-container class="interview-main" v-if="status === 'interviewing'">
       <!-- AI消息增加头像 -->
       <div v-for="(msg, index) in messages" :key="index"
       :class="['message-bubble', msg.type, { loading: msg.loading }]">
@@ -558,12 +511,12 @@ const extractTextFromPDF = async (data:any) => {
 </template>
 
 <style scoped>
-.exam-container {
+.interview-container {
   height: 90vh;
   display: flex;
 }
 
-.exam-sidebar {
+.interview-sidebar {
   width: 15%;
   background: #f0f0f0;
   display: flex;
@@ -591,7 +544,7 @@ const extractTextFromPDF = async (data:any) => {
   color: #333;
 }
 
-.exam-main {
+.interview-main {
   display: flex;
   flex-direction: column;
   width: 85%;
@@ -745,16 +698,16 @@ const extractTextFromPDF = async (data:any) => {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .exam-container {
+  .interview-container {
     flex-direction: column;
   }
   
-  .exam-sidebar {
+  .interview-sidebar {
     width: 100%;
     height: auto;
   }
   
-  .exam-main {
+  .interview-main {
     width: 100%;
   }
   

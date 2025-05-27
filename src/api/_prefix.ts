@@ -5,3 +5,5 @@ export const API_MODULE = '/api'
 export const USER_MODULE = `/auth`
 
 export const KNOWLEDGE_MODULE = '/knowledge_base'
+
+export const INTERVIEW_MODULE = '/interviews'
