@@ -14,8 +14,8 @@ export const startInterview = (params: StartInterviewParams) => {
     //console.log('startInterview params', params);
     return axios.post(`${INTERVIEW_MODULE}`, params, { headers: { 'Content-Type': 'application/json' } })
         .then(res => {
-            console.log('startInterview res', res);
-            return res.data;
+            //console.log('startInterview res', res);
+            return res;
         });
 };
 
@@ -52,6 +52,7 @@ export const getUserOldInterviews = (userId: number) => {
 
 // 获取单个面试记录
 export const getInterview = (interviewId: number) => {
+    //console.log('getInterview interviewId', interviewId);
     return axios.get(`${INTERVIEW_MODULE}/single/${interviewId}`, {
         headers: {
             'Authorization': sessionStorage.getItem('token') || ''

@@ -2,7 +2,7 @@
 import { ref} from 'vue'
 import { Microphone, Position, Plus,Document } from '@element-plus/icons-vue'
 import { renderMarkdown } from '../../utils/markdown';
-import { startInterview, submitAnswer } from '../../api/interview';
+import { endInterview, getInterview, getUserOldInterviews, startInterview, submitAnswer } from '../../api/interview';
 
 const Form = ref({
   title: '',
@@ -24,17 +24,22 @@ function startview(form:any){
         user_id: userId.value
       }).then(res => {
         console.log('面试开始:', res);
-        if (res.status === 201) {
-          console.log('面试开始2:', res);
+        if (res.status === 200) {
+          //console.log('面试开始2:', res);
           status.value = 'interviewing';
-        } else {
+          interviewId.value = res.data.interview_id;
+          messages.value = [
+            { content: res.data.first_question.text, type: 'ai', loading: false }
+          ];
+        } 
+        else {
           ElMessage({
-            message: res.data.msg,
-            type: 'error',
+            message: '面试开始失败，请稍后再试',
+            type: 'error'
           })
         }
       }).catch(error => {
-      ElMessage.error('面试开始失败，请稍后再试');
+        ElMessage.error('面试开始失败，请稍后再试');
         console.error('Error in startview:', error);
     });
     } else {
@@ -71,23 +76,72 @@ const resetForm = (form: any) => {
     resumeText: ''
   }
 };
-// 模拟数据
 const messages = ref([
-  { content: '请介绍一下Java的并发实现机制？', type: 'ai' , loading:false},
+  { content: '', type: 'ai' , loading:false},
 ])
 const status = ref('start')
 const interviewId = ref(0)
-// 模拟发送方法
 const sendMessage = async () => {
   if (ContentText.value.trim()) {
     messages.value.push({ content: ContentText.value, type: 'user',loading:false})
-    //let msg = ContentText.value
+    messages.value.push({ content: '', type: 'ai', loading: true });
+    let msg = ContentText.value;
     ContentText.value = ''
     submitAnswer(interviewId.value,{
-      answer: ContentText.value,
+      answer: msg,
     }).then(res => {
       console.log('回答提交成功:', res);
-      
+      if(res.progress.length < 5 && res.next_question.is_followup === true){
+      messages.value[messages.value.length - 1].loading = false; // 停止加载状态
+      messages.value[messages.value.length - 1].content = res.next_question.text; // 更新AI消息内容
+      }
+      else if(res.next_question.is_followup === false){
+        messages.value[messages.value.length - 1].loading = false; // 停止加载状态
+        messages.value[messages.value.length - 1].content = res.next_question.text; // 更新AI消息内容
+        endInterview(interviewId.value).then(res => {
+          console.log('面试结束:', res);
+          messages.value.push({
+            content: '面试已结束，本次面试得分为'+res.final_score+'，感谢参与！', 
+            type: 'ai', 
+            loading: false
+          });
+          // 等待10秒
+          setTimeout(() => {
+            status.value = 'start'; // 重置状态
+            messages.value = []; // 清空消息
+            Form.value = {
+              title: '',
+              position: '',
+              model: 'hunyuan',
+              techStack: ['Java'],
+              resumeText: ''
+            };
+          }, 10000);
+        }).catch(error => {
+          console.error('Error in endInterview:', error);
+        });
+      }
+      else {
+        endInterview(interviewId.value).then(res => {
+          console.log('面试结束:', res);
+          messages.value[messages.value.length - 1].loading = false; // 停止加载状态
+          messages.value[messages.value.length - 1].content = '面试已结束，本次面试得分为'+res.final_score+'，感谢参与！'; // 更新AI消息内容
+          //等待5秒
+          setTimeout(() => {
+            status.value = 'start'; // 重置状态
+            messages.value = []; // 清空消息
+            Form.value = {
+              title: '',
+              position: '',
+              model: 'hunyuan',
+              techStack: ['Java'],
+              resumeText: ''
+            };
+          }, 5000);
+        }).catch(error => {
+          console.error('Error in endInterview:', error);
+        });
+      }
     }).catch(error => {
       console.error('Error in sendMessage:', error);
     });
@@ -95,12 +149,44 @@ const sendMessage = async () => {
     
   }
 }
+const history_ids = ref<any[]>([]);
+const historys = ref<any[]>([]);
+function handlehistory() {
+  status.value = 'history';
+  getUserOldInterviews(userId.value).then(res => {
+    console.log('获取面试历史:', res);
+    //只接受ended_at有值的
+    history_ids.value = res.filter((item:any) => item.ended_at !== null);
+    history_ids.value.map((interview:any) => {
+      getInterview(interview.interview_id).then(res=> {
+        //console.log('获取面试详情:', res);
+        historys.value.push({
+          interview_id: res.interview_id,
+          interview_name: res.interview_name,
+          position: res.position,
+          started_at: res.started_at,
+          ended_at: res.ended_at,
+        });
+      }).catch(error => {
+        console.error('Error in getInterview:', error);
+      });
+    });
+
+    console.log('面试历史数据:', historys.value);
+    // 这里可以处理获取到的面试历史数据
+    // 例如将其存储在一个变量中以供展示
+  }).catch(error => {
+    console.error('Error in getUserOldInterviews:', error);
+  });
+  console.log('查看面试历史');
+}
+
 
 // 语音录入
 import { v4 as uuidv4 } from 'uuid';
 import { onUnmounted } from 'vue';
 const appkey = ref('90AfgPopPQbBvM68');
-const token = ref('27cb85463b6e4616a01414fbc0553f76');
+const token = ref('444f68ec138f4904b34d1cd02306f745');
 const isRecording = ref(false);
 const ContentText = ref('');
 const latestText= ref('');
@@ -348,7 +434,7 @@ const extractTextFromPDF = async (data:any) => {
           <el-button 
             type="info" 
             class="history-btn"
-            @click="status = 'history'">
+            @click="handlehistory">
             <el-icon><Document /></el-icon>
             面试历史
           </el-button>
@@ -440,7 +526,7 @@ const extractTextFromPDF = async (data:any) => {
               <p class="history-title">{{ item }}</p>
               <p class="history-date">2023-10-01 12:00</p>
             </div>
-            <el-button type="text" class="history-action">查看</el-button>
+            <el-button link class="history-action">查看</el-button>
           </div>
         </div>
       </div>
@@ -604,7 +690,7 @@ const extractTextFromPDF = async (data:any) => {
   cursor: pointer;
 }
 
-.chat-footer {
+/* .chat-footer {
   display: flex;
   margin-top: 20px;
   height: 20vh;
@@ -613,6 +699,19 @@ const extractTextFromPDF = async (data:any) => {
   justify-content: space-between;
   width: 97%;
   padding: 0 20px;
+}*/
+.chat-footer {
+  /* position: fixed; */
+  margin-bottom: 0;
+  display: flex;
+  margin-top: auto;
+  height: 150px;
+  background: #f5f5f5;
+  align-items: center;
+  padding: 0px 20px;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+  width: 97%;
+  z-index: 100;
 }
 
 .chat-input {
@@ -630,7 +729,7 @@ const extractTextFromPDF = async (data:any) => {
   background: white;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
-}
+} 
 
 .reply-panel {
   background: white;
@@ -847,6 +946,7 @@ const extractTextFromPDF = async (data:any) => {
 }
 /* 聊天消息气泡 */
 .message-bubble {
+  margin-bottom: 20vh;
   max-width: 72%;
   min-width: 240px;
   margin: 12px 20px;
