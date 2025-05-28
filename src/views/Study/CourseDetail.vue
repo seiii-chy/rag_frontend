@@ -28,12 +28,6 @@ onMounted(() => {
       <h2>{{ course.title }}</h2>
       <p>{{ course.desc }}</p>
       <el-progress :percentage="course.progress" />
-
-      <el-button type="primary" style="margin-top: 20px;">知识图谱</el-button>
-
-      <div class="knowledge-graph-placeholder">
-        <p>这里是知识图谱展示区域</p>
-      </div>
     </el-aside>
 
     <!-- 右侧子模块区域 -->
@@ -71,14 +65,6 @@ onMounted(() => {
   padding: 20px;
   background: #f9f9f9;
   border-right: 1px solid #ebeef5;
-}
-
-.knowledge-graph-placeholder {
-  margin-top: 20px;
-  padding: 15px;
-  border: 1px dashed #dcdfe6;
-  text-align: center;
-  color: #999;
 }
 
 .submodules {
