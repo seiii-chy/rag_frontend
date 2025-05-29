@@ -202,7 +202,7 @@ const changeModel = (val: string) => {
   console.log('当前选择模型:', val)
 }
 
-const loadConversationList = async () => {
+const loadConversationList = async () => { // TODO
   const res = await getConversations()
   conversations.value = res.data.conversation_ids.map((id: number) => ({
     id,
@@ -228,7 +228,6 @@ const startNewConversation = () => {
 
 onMounted(async () => {
   await loadConversationList()
-  console.log(conversations.value)
 })
 
 </script>
