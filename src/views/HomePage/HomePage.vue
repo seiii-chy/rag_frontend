@@ -218,11 +218,13 @@ const loadConversationMessages = async (id: number) => {
     content: m.content,
     timestamp: new Date(m.timestamp).getTime()
   }))
+  references.value = []
 }
 
 const startNewConversation = () => {
   currentConversationId.value = null;
   messages.value = [];
+  references.value = [];
   curTitle.value = '新建对话';
 };
 
@@ -261,8 +263,8 @@ onMounted(async () => {
       </div>
       <h2>会话历史</h2>
       <div style="margin: 10px 0; text-align: center;">
-        <el-button type="primary" icon="Plus" size="small" @click="startNewConversation">
-          新建对话
+        <el-button type="success" size="default" @click="startNewConversation">
+          ➕新建对话
         </el-button>
       </div>
       <el-menu :default-active="String(currentConversationId)">
