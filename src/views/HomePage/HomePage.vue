@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, onMounted } from 'vue'
 import { getDocumentUrl, createSSEConnection  } from '../../api/search.ts'
+import { getConversations, getConversationDetail, createConversation, addMessageToConversation } from '../../api/conversation.ts'
 import { useRouter } from 'vue-router'
 import {MagicStick, Cpu, Food, Setting, DocumentCopy, Promotion, Position} from '@element-plus/icons-vue'
 import { renderMarkdown } from '../../utils/markdown';
@@ -9,9 +10,11 @@ import '../../styles/markdown.scss';
 const models = ['混元', 'DeepseekV3', '豆包', '自定义模型']
 const selectedModel = ref(models[0])
 
+const curTitle = ref<string>('新建对话')
+const userId = parseInt(sessionStorage.getItem('userId') as string);
 const searchInput = ref('')
-const history = ref<{ query: string }[]>(JSON.parse(sessionStorage.getItem('chat_history') || '[]'))
-const activeHistory = ref<number | null>(null)
+const conversations = ref<Conversation[]>([])
+const currentConversationId = ref<number | null>(null)
 const references = ref<Document[]>([])
 const router = useRouter()
 const loading = ref(false)
@@ -30,6 +33,11 @@ interface Document {
   content: string;
   score: number;
   url: string;
+}
+
+interface Conversation {
+  id: number;
+  title: string;
 }
 
 const messages = ref<Message[]>([]);
@@ -56,7 +64,7 @@ const copyText = (text: string) => {
 };
 
 // 处理流式搜索
-const handleStreamSearch = async (query: string) => {
+const handleStreamSearch = (query: string): Promise<Message> => {
   closeConnection();
 
   messages.value.push({
@@ -75,66 +83,71 @@ const handleStreamSearch = async (query: string) => {
   messages.value.push(aiMessage);
   const aiIndex = messages.value.length - 1;
 
-  closeConnection = createSSEConnection(
-      {
-        query,
-        top_k: 5,
-        model: selectedModel.value
-      },
-      (data) => {
-        try {
-          const packet = JSON.parse(data);
+  return new Promise((resolve) => {
+    closeConnection = createSSEConnection(
+        {
+          query,
+          top_k: 5,
+          model: selectedModel.value
+        },
+        (data) => {
+          try {
+            const packet = JSON.parse(data);
 
-          if (packet.type === 'docs') {
-            const docs = packet.data
+            if (packet.type === 'docs') {
+              const docs = packet.data;
 
-            Promise.all(
-                docs.map(async (doc: Document) => {
-                  try {
-                    const res = await getDocumentUrl(doc.title)
-                    console.log(res)
-                    return {
-                      title: doc.title,
-                      url: res,
-                      source: doc.content.slice(0, 50) + '...'
+              Promise.all(
+                  docs.map(async (doc: Document) => {
+                    try {
+                      const res = await getDocumentUrl(doc.title);
+                      return {
+                        title: doc.title,
+                        url: res,
+                        source: doc.content.slice(0, 50) + '...'
+                      };
+                    } catch {
+                      return {
+                        title: doc.title,
+                        url: '',
+                        source: doc.content.slice(0, 50) + '...'
+                      };
                     }
-                  } catch (err) {
-                    return {
-                      title: doc.title,
-                      url: '',
-                      source: doc.content.slice(0, 50) + '...'
-                    }
-                  }
-                })
-            ).then((result) => {
-              const seen = new Set()
-              references.value = (result as Document[]).filter(doc => {
-                if (seen.has(doc.title)) return false
-                seen.add(doc.title)
-                return true
-              })
-            });
-          }else if (packet.type === 'content') {
-            messages.value[aiIndex].content += packet.data;
-            scrollToBottom();
-          } else if (data === '[END]') {
-            messages.value[aiIndex].loading = false;
+                  })
+              ).then((result) => {
+                const seen = new Set();
+                references.value = result.filter(doc => {
+                  if (seen.has(doc.title)) return false;
+                  seen.add(doc.title);
+                  return true;
+                });
+              });
+            } else if (packet.type === 'content') {
+              messages.value[aiIndex].content += packet.data;
+              scrollToBottom();
+            } else if (data === '[END]') {
+              messages.value[aiIndex].loading = false;
+              resolve(messages.value[aiIndex]);
+            }
+          } catch (e) {
+            if (data === '[END]') {
+              messages.value[aiIndex].loading = false;
+              resolve(messages.value[aiIndex]);
+            } else if (!data.startsWith('{')) {
+              messages.value[aiIndex].content += data;
+            }
           }
-        } catch (e) {
-          if (data === '[END]') {
-            messages.value[aiIndex].loading = false;
-          } else if (!data.startsWith('{')) {
-            messages.value[aiIndex].content += data;
-          }
+        },
+        (error) => {
+          console.error('SSE error:', error);
+          messages.value[aiIndex].content += '\n\n[连接异常中断]';
+          messages.value[aiIndex].loading = false;
+          resolve(messages.value[aiIndex]);
         }
-      },
-      (error) => {
-        console.error('SSE error:', error);
-        messages.value[aiIndex].content += '\n\n[连接异常中断]';
-        messages.value[aiIndex].loading = false;
-      }
-  );
+    );
+  });
 };
+
 
 // 由于未实现，为了CI/CD绕过绕过ts检查先注释掉 TODO
 // const stopStream = () => {
@@ -149,19 +162,34 @@ const handleStreamSearch = async (query: string) => {
 // };
 
 const handleSearch = async () => {
-  if (!searchInput.value.trim()) return;
   const query = searchInput.value.trim();
-
-  history.value.unshift({ query });
-  sessionStorage.setItem('chat_history', JSON.stringify(history.value)); // 更新缓存
-
-  activeHistory.value = 0;
-
-  await handleStreamSearch(query);
+  if (!query) return;
 
   searchInput.value = '';
-};
 
+  // 如果是新对话，先创建并设置 conversationId
+  if (!currentConversationId.value) {
+    const res = await createConversation({
+      user_id: userId,
+      content: query
+    });
+    currentConversationId.value = res.data.conversation_id;
+    await loadConversationList();
+  } else {
+    await addMessageToConversation(currentConversationId.value, {
+      role: 'user',
+      content: query
+    });
+  }
+
+  // 等待完整内容生成后再保存 ai 内容
+  const aiMessage = await handleStreamSearch(query);
+
+  await addMessageToConversation(currentConversationId.value as number, {
+    role: 'ai',
+    content: aiMessage.content
+  });
+};
 
 const viewReference = (pdfUrl: string) => {
   router.push({
@@ -174,11 +202,35 @@ const changeModel = (val: string) => {
   console.log('当前选择模型:', val)
 }
 
-const selectHistory = (index: number) => {
-  activeHistory.value = index
-  searchInput.value = history.value[index].query
-  handleSearch()
+const loadConversationList = async () => {
+  const res = await getConversations()
+  conversations.value = res.data.conversation_ids.map((id: number) => ({
+    id,
+  }))
 }
+
+const loadConversationMessages = async (id: number) => {
+  const res = await getConversationDetail(id)
+  curTitle.value = res.data.title
+  currentConversationId.value = id
+  messages.value = res.data.messages.map((m: any) => ({
+    type: m.role,
+    content: m.content,
+    timestamp: new Date(m.timestamp).getTime()
+  }))
+}
+
+const startNewConversation = () => {
+  currentConversationId.value = null;
+  messages.value = [];
+  curTitle.value = '新建对话';
+};
+
+onMounted(async () => {
+  await loadConversationList()
+  console.log(conversations.value)
+})
+
 </script>
 
 <template>
@@ -208,10 +260,20 @@ const selectHistory = (index: number) => {
           </el-option>
         </el-select>
       </div>
-      <h2>搜索历史</h2>
-      <el-menu :default-active="String(activeHistory)" class="history-menu">
-        <el-menu-item v-for="(item, index) in history" :key="index" @click="selectHistory(index)">
-          {{ item.query }}
+      <h2>会话历史</h2>
+      <div style="margin: 10px 0; text-align: center;">
+        <el-button type="primary" icon="Plus" size="small" @click="startNewConversation">
+          新建对话
+        </el-button>
+      </div>
+      <el-menu :default-active="String(currentConversationId)">
+        <el-menu-item
+            v-for="conv in conversations"
+            :key="conv.id"
+            :index="String(conv.id)"
+            @click="loadConversationMessages(conv.id)"
+        >
+          {{ conv.title }}
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -220,6 +282,7 @@ const selectHistory = (index: number) => {
     <!-- 中间：聊天区 -->
     <el-container>
       <el-main class="chat-main">
+        <el-text style="font-size: x-large; font-weight: bold">{{curTitle}}</el-text>
         <div class="message-container">
           <div class="chat-box">
             <div v-for="(msg, index) in messages" :key="index"
@@ -291,7 +354,6 @@ const selectHistory = (index: number) => {
         </div>
       </el-main>
     </el-container>
-
 
 
     <!-- 右侧：文献展示 -->
