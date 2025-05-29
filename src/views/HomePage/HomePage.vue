@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted } from 'vue'
 import { getDocumentUrl, createSSEConnection  } from '../../api/search.ts'
-import { getConversations, getConversationDetail, createConversation, addMessageToConversation } from '../../api/conversation.ts'
+import {
+  getConversations,
+  getConversationDetail,
+  createConversation,
+  addMessageToConversation,
+  deleteConversation
+} from '../../api/conversation.ts'
 import { useRouter } from 'vue-router'
-import {MagicStick, Cpu, Food, Setting, DocumentCopy, Promotion, Position} from '@element-plus/icons-vue'
+import {MagicStick, Cpu, Food, Setting, DocumentCopy, Promotion, Position, Close} from '@element-plus/icons-vue'
 import { renderMarkdown } from '../../utils/markdown';
 import '../../styles/markdown.scss';
 
@@ -202,12 +208,18 @@ const changeModel = (val: string) => {
   console.log('当前选择模型:', val)
 }
 
-const loadConversationList = async () => { // TODO
-  const res = await getConversations()
-  conversations.value = res.data.conversation_ids.map((id: number) => ({
-    id,
-  }))
-}
+const loadConversationList = async () => {
+  try {
+    const res = await getConversations();
+    conversations.value = res.data.conversations.map((conv: { id: number; title: string }) => ({
+      id: conv.id,
+      title: conv.title
+    }));
+  } catch (err) {
+    conversations.value = [];
+    console.error('获取对话列表失败:', err);
+  }
+};
 
 const loadConversationMessages = async (id: number) => {
   const res = await getConversationDetail(id)
@@ -226,6 +238,31 @@ const startNewConversation = () => {
   messages.value = [];
   references.value = [];
   curTitle.value = '新建对话';
+};
+
+const handleDelete = async (id: number) => {
+  try {
+    const res = await deleteConversation(id);
+
+    if (res.status === 200) {
+      // 如果删除的是当前对话，清空当前会话内容
+      if (currentConversationId.value === id) {
+        currentConversationId.value = null;
+        messages.value = [];
+        references.value = [];
+        curTitle.value = ''
+      }
+
+      // 刷新会话列表
+      await loadConversationList();
+
+      ElMessage.success('删除成功');
+    } else {
+      ElMessage.error(`删除失败：${res.data.error || '未知错误'}`);
+    }
+  } catch (err) {
+    ElMessage.error("删除失败！");
+  }
 };
 
 onMounted(async () => {
@@ -275,6 +312,9 @@ onMounted(async () => {
             @click="loadConversationMessages(conv.id)"
         >
           {{ conv.title }}
+          <el-button type="danger" @click="handleDelete(conv.id)" size="small" style="position: absolute ;right: 5px">
+            <el-icon><Close /></el-icon>
+          </el-button>
         </el-menu-item>
       </el-menu>
     </el-aside>

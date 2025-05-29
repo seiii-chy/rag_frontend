@@ -45,6 +45,15 @@ export const getConversationDetail = (id: number) => {
     }).then(res => res)
 }
 
+// 删除会话
+export const deleteConversation = (id: number) => {
+    return axios.delete(`${CONVERSATION_MODULE}/delete/${id}`, {
+        headers: {
+            'Authorization': sessionStorage.getItem('token') || ''
+        }
+    }).then(res => res)
+}
+
 // 创建会话
 export const createConversation = (data: CreateConversationData) => {
     return axios.post(`${CONVERSATION_MODULE}/create`, data, {
