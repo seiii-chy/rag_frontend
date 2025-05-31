@@ -15,6 +15,7 @@ import '../../styles/markdown.scss';
 
 const models = ['混元', 'DeepseekV3', '豆包', '自定义模型']
 const selectedModel = ref(models[0])
+const useKnowledgeBase = ref(false)
 
 const curTitle = ref<string>('新建对话')
 const userId = parseInt(sessionStorage.getItem('userId') as string);
@@ -155,7 +156,7 @@ const handleStreamSearch = (query: string): Promise<Message> => {
 };
 
 
-// 由于未实现，为了CI/CD绕过绕过ts检查先注释掉 TODO
+// 由于未实现，为了CI/CD绕过ts检查先注释掉 TODO
 // const stopStream = () => {
 //   closeConnection();
 //   const lastAiMsg = [...messages.value].reverse().find(m => m.type === 'ai');
@@ -277,9 +278,11 @@ onMounted(async () => {
     <el-aside width="15%" class="history-panel">
       <!-- 顶部工具栏：模型选择 -->
       <div class="model-selector">
-        <el-select v-model="selectedModel" placeholder="选择AI模型" popper-class="model-select-dropdown"
-          @change="changeModel">
-          <el-option v-for="model in models" :key="model" :label="model" :value="model">
+        <div style="display: flex;">
+          <el-text style="white-space: nowrap;">模型选择：</el-text>
+          <el-select v-model="selectedModel" placeholder="选择AI模型" popper-class="model-select-dropdown"
+                     @change="changeModel">
+            <el-option v-for="model in models" :key="model" :label="model" :value="model">
             <span class="model-option">
               <el-icon v-if="model === '混元'" class="model-icon">
                 <MagicStick />
@@ -295,8 +298,16 @@ onMounted(async () => {
               </el-icon>
               {{ model }}
             </span>
-          </el-option>
-        </el-select>
+            </el-option>
+          </el-select>
+        </div>
+        <div style="display: flex; margin-top: 20px">
+          <el-text style="white-space: nowrap;">自定义知识库：</el-text>
+          <el-select v-model="useKnowledgeBase" placeholder="是否启用" popper-class="model-select-dropdown">
+            <el-option :label="'启用'" :value="true" />
+            <el-option :label="'不启用'" :value="false" />
+          </el-select>
+        </div>
       </div>
       <h2>会话历史</h2>
       <div style="margin: 10px 0; text-align: center;">
@@ -311,7 +322,7 @@ onMounted(async () => {
             :index="String(conv.id)"
             @click="loadConversationMessages(conv.id)"
         >
-          {{ conv.title }}
+          <p style="overflow: hidden">{{ conv.title }}</p>
           <el-button type="danger" @click="handleDelete(conv.id)" size="small" style="position: absolute ;right: 5px">
             <el-icon><Close /></el-icon>
           </el-button>

@@ -47,7 +47,12 @@
           </el-input>
         </div>
 
-        <el-button type="primary" @click="router.push('/knowledgeBase');" v-if="isAdmin">管理知识库</el-button>
+        <el-button
+            type="primary"
+            @click="router.push({ path: '/knowledgeBase', query: { isAdmin: String(isAdmin) } })"
+        >
+          {{ isAdmin ? '管理知识库' : '我的知识库' }}
+        </el-button>
 
         <!-- 用户操作按钮 -->
         <el-tooltip content="个人中心" placement="bottom">

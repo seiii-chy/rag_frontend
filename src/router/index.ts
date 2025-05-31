@@ -65,7 +65,7 @@ const router = createRouter({
                 name: 'KnowledgeBase',
                 component: () => import('../views/KnowledgeBase/KnowledgeBase.vue'),
                 meta: {title: '管理知识库'}
-            }
+            },
         ]
     }, {
         path: '/404',
@@ -78,33 +78,34 @@ const router = createRouter({
     }]
 })
 
-// router.beforeEach((to, _, next) => {
-//     const token: string | null = sessionStorage.getItem('token');
-//     const role: string | null = sessionStorage.getItem('role')
-//
-//     if (to.meta.title) {
-//         document.title = to.meta.title
-//     }
-//
-//     if (token) {
-//         if (to.meta.permission) {
-//             if (to.meta.permission.includes(role!)) {
-//                 next()
-//             } else {
-//                 next('/404')
-//             }
-//         } else {
-//             next()
-//         }
-//     } else {
-//         if (to.path === '/login') {
-//             next();
-//         } else if (to.path === '/register') {
-//             next()
-//         } else {
-//             next('/login')
-//         }
-//     }
-// })
+router.beforeEach((to, _, next) => {
+    const token: string | null = sessionStorage.getItem('token');
+    const role: string | null = sessionStorage.getItem('role')
+
+    if (to.meta.title) {
+        document.title = to.meta.title
+    }
+
+    if (token) {
+        if (to.meta.permission) {
+            if (to.meta.permission.includes(role!)) {
+                next()
+            } else {
+                next('/404')
+            }
+        } else {
+            next()
+        }
+    } else {
+        if (to.path === '/login') {
+            next();
+        } else if (to.path === '/register') {
+            next()
+        } else {
+            next('/login')
+            // next()
+        }
+    }
+})
 
 export {router}
