@@ -50,6 +50,10 @@ function handleLogin() {
 
 <template>
   <el-main class="main-frame bgimage">
+    <div class="title-box">
+      <span class="logo-text">AI</span>
+      <el-text class="app-title">智能面试助手</el-text>
+    </div>
     <el-card class="login-card">
       <div>
         <h1>登录您的账户</h1>
@@ -82,12 +86,38 @@ function handleLogin() {
   height: 100%;
 
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
 }
 
 .bgimage {
-  background-image: url("../../assets/shopping-1s-1084px.svg");
+  background: rgba(58,255,153,0.45);
+}
+
+.title-box{
+  display: flex;
+  margin-bottom: 2%;
+}
+
+.logo-text {
+  background: var(--hover-yellow);
+  color: #3540b5;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 800;
+  font-size: 1.4rem;
+  margin-right: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.app-title{
+  font-size: xx-large;
+  font-weight: bolder;
 }
 
 .login-card {

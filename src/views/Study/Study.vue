@@ -1,88 +1,78 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
-import { ElCollapseTransition } from 'element-plus'
 import { useRouter } from 'vue-router'
 
-const isFilterVisible = ref(false)
 const router = useRouter()
 
-const toggleFilter = () => {
-  isFilterVisible.value = !isFilterVisible.value
-}
-
 const knowledgePoints = ref([
-  { title: 'Java 基础', desc: '面向对象、异常处理等', id: 1, progress: 70 },
-  { title: '并发编程', desc: '线程、锁、并发工具类', id: 2, progress: 50 },
-  { title: 'Spring 框架', desc: 'IOC、AOP、事务管理', id: 3, progress: 30 },
-  { title: '数据库优化', desc: '索引、SQL调优、事务隔离级别', id: 4, progress: 60 },
-  { title: '操作系统', desc: '内存管理、进程线程、IO模型', id: 5, progress: 20 },
-  { title: '网络协议', desc: 'TCP/IP、HTTP、WebSocket', id: 6, progress: 10 },
+  { title: 'Java 基础', desc: '面向对象、异常处理等', id: 1, level: '基础' },
+  { title: '并发编程', desc: '线程、锁、并发工具类', id: 2, level: '进阶' },
+  { title: 'Spring 框架', desc: 'IOC、AOP、事务管理', id: 3, level: '进阶' },
+  { title: '数据库优化', desc: '索引、SQL调优、事务隔离级别', id: 4, level: '高级' },
+  { title: '操作系统', desc: '内存管理、进程线程、IO模型', id: 5, level: '基础' },
+  { title: '网络协议', desc: 'TCP/IP、HTTP、WebSocket', id: 6, level: '基础' },
 ])
 
-const goToCourse = (id) => {
-  router.push({ path: '/courseDetail', query: { id } })
+const goToCourse = (item: typeof knowledgePoints.value[number]) => {
+  router.push({
+    path: '/courseDetail',
+    query: {
+      id: item.id,
+      title: item.title,
+      desc: item.desc,
+      level: item.level,
+    },
+  })
 }
+
+const slides = ref([
+  {
+    title: 'Java 基础 → Spring 框架',
+    desc: '掌握 Java 面向对象基础，再深入理解 IOC/AOP 等核心概念。',
+  },
+  {
+    title: '并发编程 → 操作系统',
+    desc: '了解线程与锁机制，结合 OS 的调度与内存管理思维。',
+  },
+  {
+    title: '数据库优化 → 网络协议',
+    desc: '从 SQL 优化出发，深入理解服务间通信协议如 HTTP 和 TCP/IP。',
+  }
+])
 
 </script>
 
 <template>
   <div class="interview-prep-page">
-    <!-- 筛选按钮 -->
-    <div class="filter-toggle">
-      <el-button @click="toggleFilter" type="primary" plain>
-        {{ isFilterVisible ? '收起筛选' : '展开筛选' }}
-      </el-button>
-    </div>
+    <el-carousel :interval="5000" type="card" height="160px" class="guide-carousel">
+      <el-carousel-item v-for="(item, index) in slides" :key="index">
+        <div class="carousel-content">
+          <h3>{{ item.title }}</h3>
+          <p>{{ item.desc }}</p>
+        </div>
+      </el-carousel-item>
+    </el-carousel>
 
-    <!-- 筛选面板 -->
-    <el-collapse-transition>
-      <div v-show="isFilterVisible" class="filter-panel">
-        <el-form inline>
-          <el-form-item label="分类">
-            <el-select placeholder="请选择分类" style="width: 180px">
-              <el-option label="后端" value="backend" />
-              <el-option label="前端" value="frontend" />
-              <el-option label="基础知识" value="base" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="难度">
-            <el-select placeholder="请选择难度" style="width: 180px">
-              <el-option label="初级" value="easy" />
-              <el-option label="中级" value="medium" />
-              <el-option label="高级" value="hard" />
-            </el-select>
-          </el-form-item>
-          <el-button type="primary">筛选</el-button>
-        </el-form>
-      </div>
-    </el-collapse-transition>
-
-    <!-- 模块标题 -->
     <div class="section-title">
-      <h2>按模块学习</h2>
+      <h2 style="white-space: nowrap;">学习模块</h2>
       <el-divider />
     </div>
 
-    <!-- 卡片区域 -->
     <div class="card-grid">
       <el-card
           v-for="item in knowledgePoints"
           :key="item.id"
           class="knowledge-card"
           shadow="hover"
-          @click="goToCourse(item.id)"
       >
         <template #header>
-          <h3>{{ item.title }}</h3>
+          <div class="card-header">
+            <h3>{{ item.title }}</h3>
+            <el-tag type="success" size="small">{{ item.level }}</el-tag>
+          </div>
         </template>
         <p>{{ item.desc }}</p>
-        <el-progress
-            :percentage="item.progress"
-            :stroke-width="8"
-            :show-text="true"
-            :format="(percentage) => `${percentage}%`"
-            style="margin-top: 10px"
-        />
+        <el-button type="primary" size="small" @click="goToCourse(item)">开始学习</el-button>
       </el-card>
     </div>
   </div>
@@ -91,41 +81,73 @@ const goToCourse = (id) => {
 <style scoped>
 .interview-prep-page {
   padding: 20px;
-  background-color: #fafafa;
+  background-color: #f9f9f9;
 }
 
-.filter-toggle {
-  text-align: right;
-  margin-bottom: 10px;
-}
-
-.filter-panel {
-  background: #f4f4f5;
-  padding: 15px;
-  border-radius: 8px;
+.guide-carousel {
   margin-bottom: 30px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.carousel-content {
+  padding: 20px;
+  color: #fff;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  border-radius: 10px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.carousel-content h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.carousel-content p {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
 }
 
 .section-title {
   margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 30px;
+  grid-template-columns: repeat(3, 1fr); /* 固定三列 */
+  gap: 24px;
 }
 
 .knowledge-card {
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
   min-height: 180px;
-  font-size: 16px;
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .knowledge-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
 }
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.knowledge-card p {
+  margin: 10px 0 16px;
+  color: #666;
+  font-size: 14px;
+}
+
 </style>
