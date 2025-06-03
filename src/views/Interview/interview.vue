@@ -2,7 +2,7 @@
 import { ref} from 'vue'
 import { Microphone, Position, Plus,Document } from '@element-plus/icons-vue'
 import { renderMarkdown } from '../../utils/markdown';
-import { endInterview, getInterview, getUserOldInterviews, startInterview, submitAnswer } from '../../api/interview';
+import { endInterview, getInterview, getInterviewQuestions, getUserOldInterviews, startInterview, submitAnswer } from '../../api/interview';
 
 const Form = ref({
   title: '',
@@ -126,7 +126,8 @@ const sendMessage = async () => {
           console.log('面试结束:', res);
           messages.value[messages.value.length - 1].loading = false; // 停止加载状态
           messages.value[messages.value.length - 1].content = '面试已结束，本次面试得分为'+res.final_score+'，感谢参与！'; // 更新AI消息内容
-          //等待5秒
+          //等待10秒
+          ElMessage.success('面试已结束，感谢参与！将于10秒后返回主页');
           setTimeout(() => {
             status.value = 'start'; // 重置状态
             messages.value = []; // 清空消息
@@ -157,6 +158,7 @@ function handlehistory() {
     console.log('获取面试历史:', res);
     //只接受ended_at有值的
     history_ids.value = res.filter((item:any) => item.ended_at !== null);
+    historys.value = [];
     history_ids.value.map((interview:any) => {
       getInterview(interview.interview_id).then(res=> {
         //console.log('获取面试详情:', res);
@@ -170,6 +172,13 @@ function handlehistory() {
       }).catch(error => {
         console.error('Error in getInterview:', error);
       });
+      // getInterviewQuestions(interview.interview_id).then(res => {
+      //   console.log('获取面试问题:', res);
+      //   // 这里可以处理获取到的面试问题
+      //   // 例如将其存储在一个变量中以供展示
+      // }).catch(error => {
+      //   console.error('Error in getInterviewQuestions:', error);
+      // });
     });
 
     console.log('面试历史数据:', historys.value);
@@ -180,13 +189,35 @@ function handlehistory() {
   });
   console.log('查看面试历史');
 }
+function handleReview(reviewingId:any) {
+  status.value = 'reviewing_interview';
+  messages.value = [];
+  getInterviewQuestions(reviewingId).then(res => {
+    console.log('获取面试问题:', res);
+    // 将面试问题存储到 messages 中
+    for (const chat of res) {
+      if(chat.feedback!=null){
+        messages.value.push({ content: `面试已结束，本次面试得分为 ${chat.final_score}，感谢参与！`, type: 'ai', loading: false });
+        messages.value.push({ content: chat.feedback, type: 'ai', loading: false });
+      }
+      else {
+        messages.value.push({ content: chat.question_text, type: 'ai', loading: false });
+        messages.value.push({ content: chat.answer_text, type: 'user', loading: false });
+      }
+      
+    }
+    console.log('面试问题数据:', messages.value);
+  }).catch(error => {
+    console.error('Error in getInterviewQuestions:', error);
+  });
+}
 
 
 // 语音录入
 import { v4 as uuidv4 } from 'uuid';
 import { onUnmounted } from 'vue';
 const appkey = ref('90AfgPopPQbBvM68');
-const token = ref('444f68ec138f4904b34d1cd02306f745');
+const token = ref('f1cebf5306b04b0784474859ae299776');
 const isRecording = ref(false);
 const ContentText = ref('');
 const latestText= ref('');
@@ -422,6 +453,7 @@ const extractTextFromPDF = async (data:any) => {
     <el-container class="interview-main" v-if="status === 'start'">
       <div class="welcome-panel">
         <h2>模拟面试工具</h2>
+        <p class="welcome-description">助你提前熟悉面试流程，提升面试表现，轻松斩获心仪 offer</p>
         <p class="welcome-description">新建一个的模拟面试或查看面试历史</p>
         <div class="welcome-actions">
           <el-button 
@@ -520,13 +552,22 @@ const extractTextFromPDF = async (data:any) => {
     <el-container class="interview-main" v-if="status === 'history'">
       <div class="history-panel">
         <h3>面试历史</h3>
-        <div class="history-list">
+        <!-- <div class="history-list">
           <div class="history-item" v-for="(item, index) in ['Java面试模拟', '项目介绍场景']" :key="index">
             <div class="history-content">
               <p class="history-title">{{ item }}</p>
               <p class="history-date">2023-10-01 12:00</p>
             </div>
             <el-button link class="history-action">查看</el-button>
+          </div>
+        </div> -->
+        <div class="history-list">
+          <div class="history-item" v-for="(item, index) in historys" :key="index">
+            <div class="history-content">
+              <p class="history-title">面试标题：{{ item.interview_name }}</p>
+              <p class="history-date">面试时间：{{ item.started_at }} - {{ item.ended_at }}</p>
+            </div>
+            <el-button link class="history-action" @click="handleReview(item.interview_id)">查看</el-button>
           </div>
         </div>
       </div>
@@ -579,19 +620,42 @@ const extractTextFromPDF = async (data:any) => {
             <el-icon :size="24"><Position /></el-icon>
           </el-button>
         </div>
-
-        <!-- <div class="reply-panel">
-          <div class="reply-list">
-            <p class="reply-title">常用</p>
-            <div class="reply-item" :class="{ 'reply-highlight': index === 0 }" v-for="(item, index) in ['抱歉，我不太清楚', '可以给一点提示吗']" :key="index">
-              <el-icon><ArrowRight /></el-icon>
-              {{ item }}
-            </div>
-            <el-link type="primary">&lt;&lt; 展开 --&gt;&gt;</el-link>
-            <el-button class="custom-btn">自定义...</el-button>
-          </div>
-        </div> -->
       </div>
+    </el-container>
+    <el-container class="interview-main" v-if="status === 'reviewing_interview'">
+      <!-- <div class="reply-panel">
+        <h3 class="reply-title">面试问题</h3>
+        <div v-for="(question, index) in messages" :key="index" class="reply-item reply-highlight">
+          {{ question.content }}
+        </div>
+        <el-button type="primary" class="custom-btn" @click="status = 'interviewing'">返回面试</el-button>
+      </div> -->
+      <!-- AI消息增加头像 -->
+      <div v-for="(msg, index) in messages" :key="index"
+      :class="['message-bubble', msg.type, { loading: msg.loading }]">
+        <!-- AI消息头像 -->
+        <div v-if="msg.type === 'ai'" class="ai-avatar">
+          <svg-icon icon-class="ai" />
+        </div>
+        <!-- 用户消息头像 -->
+        <div v-if="msg.type === 'user'" class="user-avatar">
+          <svg-icon icon-class="user" />
+        </div>
+        <div class="bubble-content">
+        <!-- 流式消息内容 -->
+          <div class="message-text">
+            <div v-if="msg.type === 'ai'" class="markdown-body" v-html="renderMarkdown(msg.content)"></div>
+            <template v-else>{{ msg.content }}</template>
+            <!-- 流式加载指示器 -->
+            <div v-if="msg.loading" class="stream-loader">
+              <div class="loader-dot"></div>
+              <div class="loader-dot"></div>
+              <div class="loader-dot"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <el-button type="primary" class="history-return-btn" @click="status = 'start'">返回面试</el-button>
     </el-container>
   </el-container>
 </template>
@@ -1039,5 +1103,12 @@ const extractTextFromPDF = async (data:any) => {
 @keyframes pulse {
   0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
   30% { opacity: 1; transform: scale(1); }
+}
+.history-return-btn {
+  margin-top: 20px;
+  width: 100%;
+  max-width: 200px;
+  /* 靠右 */
+  align-self: flex-end;
 }
 </style>
