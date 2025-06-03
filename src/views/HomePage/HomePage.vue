@@ -15,7 +15,6 @@ import '../../styles/markdown.scss';
 
 const models = ['混元', 'DeepseekV3', '豆包', '自定义模型']
 const selectedModel = ref(models[0])
-const useKnowledgeBase = ref(false)
 
 const curTitle = ref<string>('新建对话')
 const userId = parseInt(sessionStorage.getItem('userId') as string);
@@ -299,13 +298,6 @@ onMounted(async () => {
               {{ model }}
             </span>
             </el-option>
-          </el-select>
-        </div>
-        <div style="display: flex; margin-top: 20px">
-          <el-text style="white-space: nowrap;">自定义知识库：</el-text>
-          <el-select v-model="useKnowledgeBase" placeholder="是否启用" popper-class="model-select-dropdown">
-            <el-option :label="'启用'" :value="true" />
-            <el-option :label="'不启用'" :value="false" />
           </el-select>
         </div>
       </div>

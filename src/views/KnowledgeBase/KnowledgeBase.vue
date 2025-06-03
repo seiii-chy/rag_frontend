@@ -4,12 +4,10 @@ import { ElMessage } from 'element-plus'
 import {UploadFilled, Document, Close} from '@element-plus/icons-vue'
 import { fetchKnowledgeFiles, uploadKnowledgeFile } from '../../api/knowledge.ts'
 import type { AxiosError } from 'axios'
-import {useRoute, useRouter} from "vue-router";
+import {useRouter} from "vue-router";
 import {getDocumentUrl} from "../../api/search.ts";
 
 const router = useRouter()
-const route = useRoute();
-const isAdmin = route.query.isAdmin === 'true';
 
 const fileList = ref<{ name: string }[]>([])
 const uploading = ref(false)
@@ -52,43 +50,30 @@ function handleDelete(name: string) {
 }
 
 const loadFiles = async () => {
-  if (isAdmin){
-    try {
-      fileList.value = (await fetchKnowledgeFiles()).map((name: string) => ({ name }))
-    } catch (err) {
-      ElMessage.error('获取文件列表失败')
-    }
-  }else{
-    try {
-      // fileList.value = (await fetchUserKnowledgeFiles()).map((name: string) => ({ name }))
-      console.log('user load') // TODO
-    } catch (err) {
-      ElMessage.error('获取文件列表失败')
-    }
+  try {
+    fileList.value = (await fetchKnowledgeFiles()).map((name: string) => ({ name }))
+  } catch (err) {
+    ElMessage.error('获取文件列表失败')
   }
 }
 
 const uploadFile = async (options: any): Promise<void> => {
   const { file } = options
-  if (isAdmin){
-    try {
-      uploading.value = true
-      const res = await uploadKnowledgeFile(file)
-      if (res.status === 200 && res.data.success) {
-        ElMessage.success(`上传成功：${res.data.saved_files.join(', ')}`)
-        await loadFiles()
-      } else {
-        ElMessage.error(res.data?.error || '上传失败')
-      }
-    } catch (err) {
-      const error = err as AxiosError
-      const errorMsg = (error.response?.data as any)?.error || '上传失败'
-      ElMessage.error(errorMsg)
-    } finally {
-      uploading.value = false
+  try {
+    uploading.value = true
+    const res = await uploadKnowledgeFile(file)
+    if (res.status === 200 && res.data.success) {
+      ElMessage.success(`上传成功：${res.data.saved_files.join(', ')}`)
+      await loadFiles()
+    } else {
+      ElMessage.error(res.data?.error || '上传失败')
     }
-  }else{
-    console.log('user upload') // TODO
+  } catch (err) {
+    const error = err as AxiosError
+    const errorMsg = (error.response?.data as any)?.error || '上传失败'
+    ElMessage.error(errorMsg)
+  } finally {
+    uploading.value = false
   }
 }
 
@@ -121,7 +106,7 @@ onMounted(() => {
 
 <template>
   <el-main class="container">
-    <div class="title_box"><p>{{isAdmin ? '知识库管理' : '我的知识库'}}</p></div>
+    <div class="title_box"><p>{{'知识库管理'}}</p></div>
     <div class="outer_border horizontal-layout">
       <!-- 左侧栏 -->
       <div class="left_div">

@@ -49,9 +49,9 @@
 
         <el-button
             type="primary"
-            @click="router.push({ path: '/knowledgeBase', query: { isAdmin: String(isAdmin) } })"
+            @click="router.push({ path: '/knowledgeBase'})"
         >
-          {{ isAdmin ? '管理知识库' : '我的知识库' }}
+          {{'管理知识库'}}
         </el-button>
 
         <!-- 用户操作按钮 -->
@@ -86,8 +86,6 @@ import { ElMessageBox } from "element-plus";
 const router = useRouter();
 const activeIndex = ref<string>(router.currentRoute.value.path);
 const searchQuery = ref<string>("");
-
-const isAdmin = sessionStorage.getItem('role') === 'Administrator'
 
 /**
  * 处理菜单选择
