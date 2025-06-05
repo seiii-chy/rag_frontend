@@ -10,6 +10,13 @@ import {getDocumentUrl} from "../../api/search.ts";
 const router = useRouter()
 
 const fileList = ref<{ name: string }[]>([])
+const categories = [
+  "面向对象", "异常处理", "集合", "线程基础", "锁机制", "并发工具类",
+  "IOC", "AOP", "事务管理", "索引优化", "SQL优化", "事务隔离",
+  "内存管理", "进程线程", "IO模型", "TCP/IP", "HTTP", "WebSocket"
+]
+const selectedCategory = ref('面向对象')
+
 const uploading = ref(false)
 const searchText = ref('')
 const currentPage = ref(1)
@@ -61,7 +68,7 @@ const uploadFile = async (options: any): Promise<void> => {
   const { file } = options
   try {
     uploading.value = true
-    const res = await uploadKnowledgeFile(file)
+    const res = await uploadKnowledgeFile(file, selectedCategory.value)
     if (res.status === 200 && res.data.success) {
       ElMessage.success(`上传成功：${res.data.saved_files.join(', ')}`)
       await loadFiles()
@@ -110,9 +117,19 @@ onMounted(() => {
     <div class="outer_border horizontal-layout">
       <!-- 左侧栏 -->
       <div class="left_div">
-        <!-- 上传 -->
+        <!-- 上传区域 -->
         <p class="upload_title">上传文档（支持 .pdf / .md）</p>
         <el-form class="upload_box">
+          <el-form-item label="选择标签">
+            <el-select v-model="selectedCategory" placeholder="请选择标签">
+              <el-option
+                  v-for="tag in categories"
+                  :key="tag"
+                  :label="tag"
+                  :value="tag"
+              />
+            </el-select>
+          </el-form-item>
           <el-form-item>
             <el-upload
                 class="upload-demo"
@@ -126,6 +143,7 @@ onMounted(() => {
             </el-upload>
           </el-form-item>
         </el-form>
+
 
         <!-- 已上传文档 -->
         <el-card class="uploaded-list" shadow="never">

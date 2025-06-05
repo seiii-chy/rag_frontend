@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { getDocumentUrl } from '../../api/search.ts'
 import { useRouter } from 'vue-router'
 import { Document } from '@element-plus/icons-vue'
+import {fetchKnowledgeFilesByCategory} from "../../api/knowledge.ts";
 
 interface Submodule {
   name: string
@@ -92,7 +93,7 @@ const allCourses: Course[] = [
 
 const course = ref<Course | null>(null)
 const selectedSubmodule = ref<Submodule | null>(null)
-const docs = ref<string[]>([])
+const docs = ref<{file_name : string}[]>([])
 const loading = ref(false)
 
 onMounted(async () => {
@@ -107,14 +108,16 @@ onMounted(async () => {
 async function fetchDocsBySubmodule(sub: Submodule) {
   loading.value = true
   docs.value = []
-  console.log(sub)
 
-  // 这里写你的 API 调用逻辑 TODO
-
-  // 模拟数据（仅供开发调试）
-  await new Promise(resolve => setTimeout(resolve, 500))
-  docs.value = ['文档1.pdf', '文档2.md']
-  loading.value = false
+  try {
+    const result = await fetchKnowledgeFilesByCategory(sub.name)
+    console.log(result)
+    docs.value = result
+  } catch (e) {
+    ElMessage.error('获取文档失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 function selectSubmodule(sub: Submodule) {
@@ -176,14 +179,14 @@ async function handlePreview(fileName: string) {
 
       <el-skeleton :loading="loading" animated :rows="6">
         <div class="doc-list">
-          <div v-for="docName in docs" :key="docName" class="doc-item">
-            <el-icon :style="{ color: getFileColor(docName) }" class="doc-icon">
+          <div v-for="doc in docs" :key="doc.file_name" class="doc-item">
+            <el-icon :style="{ color: getFileColor(doc.file_name) }" class="doc-icon">
               <Document />
             </el-icon>
-            <el-tooltip :content="docName" placement="top">
-              <span class="doc-name">{{ docName }}</span>
+            <el-tooltip :content="doc.file_name" placement="top">
+              <span class="doc-name">{{ doc.file_name }}</span>
             </el-tooltip>
-            <el-button size="default" type="primary" @click="handlePreview(docName)" style="margin-right: 10%">阅读</el-button>
+            <el-button size="default" type="primary" @click="handlePreview(doc.file_name)" style="margin-right: 10%">阅读</el-button>
           </div>
         </div>
       </el-skeleton>
