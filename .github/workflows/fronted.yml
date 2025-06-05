@@ -57,7 +57,7 @@ jobs:
         run: |
             docker build \
               -t $DOCKER_IMAGE_NAME:${GITHUB_SHA::8} \
-            .
+              .
       - name: Deploy container
         run: |
             docker run -d \
