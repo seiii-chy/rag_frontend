@@ -1,0 +1,81 @@
+name: Frontend CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+env:
+  DOCKER_IMAGE_NAME: rag-frontend
+  DOCKER_CONTAINER_NAME: rag-frontend-container
+
+
+jobs:
+  service-validation:
+    runs-on: [ self-hosted, nju ]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.20.8'
+
+      - name: Clean install dependencies
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Build project
+        run: npm run build
+
+      - name: Stop and remove existing container
+        run: |
+            docker stop $DOCKER_CONTAINER_NAME || true
+            docker rm $DOCKER_CONTAINER_NAME || true
+
+      - name: Clean up old Docker images
+        run: |
+            # 保留最近1个镜像
+            if [ $(docker images -q $DOCKER_IMAGE_NAME | wc -l) -gt 1 ]; then
+              docker images --format "{{.ID}} {{.CreatedAt}}" $DOCKER_IMAGE_NAME \
+                | sort -k2,3 -r -t ' ' \
+                | awk -v keep=1 'NR>keep {print $1}' \
+                | xargs -r docker rmi -f
+            else
+              echo "无需清理：当前镜像数量 <= 1"
+            fi
+
+      - name: Build Docker image
+        run: |
+            docker build \
+              -t $DOCKER_IMAGE_NAME:${GITHUB_SHA::8} \
+            .
+      - name: Deploy container
+        run: |
+            docker run -d \
+              --name $DOCKER_CONTAINER_NAME \
+              --restart unless-stopped \
+              --health-cmd "curl --fail http://localhost:$EXPOSED_PORT || exit 1" \
+              --health-interval 30s \
+              --health-timeout 10s \
+              --health-retries 3 \
+              -p 3000:3000 \
+              $DOCKER_IMAGE_NAME:${GITHUB_SHA::8}
+          
+          
+          # 等待容器健康检查通过
+            timeout 120 bash -c 'until docker inspect --format "{{json .State.Health.Status }}" $DOCKER_CONTAINER_NAME | grep -q "healthy"; do sleep 5; done'
+
+      - name: Print debug logs if failed
+        if: failure()
+        run: |
+            echo "部署失败，打印容器日志："
+            docker logs $DOCKER_CONTAINER_NAME || true

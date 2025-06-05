@@ -18,7 +18,7 @@ export default defineConfig({
         })],
     server: {
         port: 3000,   //设定前端运行的端口
-        open: true,
+        open: false,
     },
     base: './'
 })
