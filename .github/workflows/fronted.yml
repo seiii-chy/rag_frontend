@@ -20,7 +20,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          repository: seiii-chy/rag-frontend
+          repository: seiii-chy/rag_frontend
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Setup Node.js
