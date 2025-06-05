@@ -13,6 +13,8 @@ const knowledgePoints = ref([
   { title: '网络协议', desc: 'TCP/IP、HTTP、WebSocket', id: 6, level: '基础' },
 ])
 
+const generalStudy = ref({ title: '综合学习', desc: '计算机基本知识、中间件及工具使用、面试技巧、Java经典书籍、Java开发、个人笔记', id: 7, level: '高级' });
+
 const goToCourse = (item: typeof knowledgePoints.value[number]) => {
   router.push({
     path: '/courseDetail',
@@ -52,7 +54,25 @@ const slides = ref([
         </div>
       </el-carousel-item>
     </el-carousel>
-
+    <div class="section-title">
+      <h2 style="white-space: nowrap;">综合学习</h2>
+      <el-divider />
+    </div>
+    <div class="card-grid">
+      <el-card
+          class="knowledge-card"
+          shadow="hover"
+      >
+        <template #header>
+          <div class="card-header">
+            <h3>{{ generalStudy.title }}</h3>
+            <el-tag type="success" size="small">{{ generalStudy.level }}</el-tag>
+          </div>
+        </template>
+        <p>{{ generalStudy.desc }}</p>
+        <el-button type="primary" size="small" @click="goToCourse(generalStudy)">开始学习</el-button>
+      </el-card>
+    </div>
     <div class="section-title">
       <h2 style="white-space: nowrap;">学习模块</h2>
       <el-divider />

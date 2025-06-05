@@ -88,6 +88,20 @@ const allCourses: Course[] = [
       { name: 'HTTP', desc: '请求方法、状态码、Cookie/Session、HTTPS' },
       { name: 'WebSocket', desc: '建立握手、全双工通信、心跳机制与断线重连' }
     ]
+  },
+  {
+    id: 7,
+    title: '综合学习',
+    desc: '综合学习面试知识。',
+    level: '高级',
+    submodules: [
+      { name: '计算机基本知识', desc: '操作系统、计算机网络、数据结构与算法等核心知识' },
+      { name: '中间件及工具使用', desc: '常用中间件（如 Redis、Kafka、Zookeeper）与开发工具的使用' },
+      { name: '面试技巧', desc: '面试流程、简历优化、常见问题答法等实战经验' },
+      { name: 'Java经典书籍', desc: 'Effective Java、Java并发编程实战等书籍的学习总结' },
+      { name: 'Java开发', desc: 'Spring、MyBatis、Spring Boot 等开发框架与实战项目经验' },
+      { name: '个人笔记', desc: '学习过程中记录的知识点和心得体会' }
+    ]
   }
 ]
 
