@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import {UploadFilled, Document, Close} from '@element-plus/icons-vue'
-import { fetchKnowledgeFiles, uploadKnowledgeFile } from '../../api/knowledge.ts'
+import {deleteKnowledgeFile, fetchKnowledgeFiles, uploadKnowledgeFile} from '../../api/knowledge.ts'
 import type { AxiosError } from 'axios'
 import {useRouter} from "vue-router";
 import {getDocumentUrl} from "../../api/search.ts";
@@ -13,7 +13,8 @@ const fileList = ref<{ name: string }[]>([])
 const categories = [
   "面向对象", "异常处理", "集合", "线程基础", "锁机制", "并发工具类",
   "IOC", "AOP", "事务管理", "索引优化", "SQL优化", "事务隔离",
-  "内存管理", "进程线程", "IO模型", "TCP/IP", "HTTP", "WebSocket"
+  "内存管理", "进程线程", "IO模型", "TCP/IP", "HTTP", "WebSocket",
+  "计算机基本知识", "中间件及工具使用", "面试技巧", "Java经典书籍", "Java开发", "个人笔记"
 ]
 const selectedCategory = ref('面向对象')
 
@@ -53,7 +54,18 @@ function handleClose(fileName: string) {
 function handleDelete(name: string) {
   // 先从已选中中移除
   selectedFiles.value = selectedFiles.value.filter(f => f !== name)
-  // TODO: 调用后端接口删除
+
+  // 调用后端接口删除
+  deleteKnowledgeFile(name)
+      .then(() => {
+        ElMessage.success('删除成功')
+        // 可选：刷新文件列表
+        loadFiles()
+      })
+      .catch(err => {
+        console.error(err)
+        ElMessage.error('删除失败')
+      })
 }
 
 const loadFiles = async () => {

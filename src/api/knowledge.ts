@@ -1,9 +1,6 @@
 import { axios } from '../utils/request'
 import { KNOWLEDGE_MODULE } from './_prefix.ts'
 
-/**
- * 获取全部文件（不分类）
- */
 export const fetchKnowledgeFiles = () => {
     return axios.get(`${KNOWLEDGE_MODULE}/list_files`, {
         headers: {
@@ -12,11 +9,6 @@ export const fetchKnowledgeFiles = () => {
     }).then(res => res.data.files)
 }
 
-/**
- * 按标签上传文件
- * @param file 上传的文件
- * @param category 分类标签，如：面向对象、事务管理等
- */
 export const uploadKnowledgeFile = (file: File, category: string) => {
     const formData = new FormData()
     formData.append('files', file, file.name)
@@ -30,10 +22,6 @@ export const uploadKnowledgeFile = (file: File, category: string) => {
     })
 }
 
-/**
- * 按标签获取文件列表
- * @param category 分类标签
- */
 export const fetchKnowledgeFilesByCategory = (category: string) => {
     return axios.get(`${KNOWLEDGE_MODULE}/get_file/${encodeURIComponent(category)}`, {
         headers: {
@@ -41,3 +29,12 @@ export const fetchKnowledgeFilesByCategory = (category: string) => {
         }
     }).then(res => res.data.files)
 }
+
+export const deleteKnowledgeFile = (fileName: string) => {
+    return axios.delete(`${KNOWLEDGE_MODULE}/delete_file/${encodeURIComponent(fileName)}`, {
+        headers: {
+            'Authorization': sessionStorage.getItem('token') || ''
+        }
+    })
+}
+
