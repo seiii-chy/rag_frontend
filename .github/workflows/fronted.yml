@@ -56,14 +56,15 @@ jobs:
       - name: Build Docker image
         run: |
             docker build \
-            -t $DOCKER_IMAGE_NAME:${GITHUB_SHA::8} .
+            -t $DOCKER_IMAGE_NAME:${GITHUB_SHA::8} \
+            .
 
       - name: Deploy container
         run: |
             docker run -d \
               --name $DOCKER_CONTAINER_NAME \
               --restart unless-stopped \
-              --health-cmd "curl --fail http://localhost:$EXPOSED_PORT || exit 1" \
+              --health-cmd "curl --fail http://localhost:3000 || exit 1" \
               --health-interval 30s \
               --health-timeout 10s \
               --health-retries 3 \
