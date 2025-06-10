@@ -32,20 +32,6 @@
 
       <!-- 右侧功能区 -->
       <div class="right-panel">
-        <!-- 搜索框 -->
-        <div class="search-box">
-          <el-input
-            v-model="searchQuery"
-            placeholder="搜索知识库..."
-            class="search-input"
-            clearable
-            @keyup.enter="handleSearch"
-          >
-            <template #prefix>
-              <el-icon class="search-icon"><Search /></el-icon>
-            </template>
-          </el-input>
-        </div>
 
         <el-button
             type="primary"
@@ -97,16 +83,6 @@ const isAdmin = sessionStorage.getItem('role') === 'Administrator'
 const handleSelect = (key: string): void => {
   activeIndex.value = key;
   router.push(key);
-};
-
-/**
- * 处理搜索操作
- */
-const handleSearch = (): void => {
-  if (searchQuery.value.trim()) {
-    console.log("搜索内容：", searchQuery.value);
-    // 实际搜索逻辑可在此处添加
-  }
 };
 
 /**
